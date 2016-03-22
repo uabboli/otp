@@ -34,3 +34,5 @@ contracts_with_subtypes.erl:7: Invalid type specification for function contracts
 contracts_with_subtypes.erl:80: The call contracts_with_subtypes:foo4(5) breaks the contract (Type) -> Type when Type :: atom()
 contracts_with_subtypes.erl:81: The call contracts_with_subtypes:foo5(5) breaks the contract (Type::atom()) -> Type::atom()
 contracts_with_subtypes.erl:82: The call contracts_with_subtypes:foo6(5) breaks the contract (Type) -> Type when Type :: atom()
+contracts_with_subtypes.erl:85: Function bad_call_foo6/0 has no local return
+contracts_with_subtypes.erl:86: The pattern 'b' can never match the type 'a'

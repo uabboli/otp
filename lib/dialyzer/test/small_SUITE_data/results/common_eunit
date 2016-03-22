@@ -1,2 +1,7 @@
 
-common_eunit.erl:57: The created fun has no local return
+common_eunit.erl:38: The pattern [F | _] can never match the type []
+common_eunit.erl:40: The call common_eunit:expand_cases(Module::any(),[atom() | tuple(),...]) will never return since it differs in the 2nd argument from the success typing arguments: (any(),[])
+common_eunit.erl:44: Function expand_case/2 has no local return
+common_eunit.erl:60: The created fun has no local return
+common_eunit.erl:86: The contract common_eunit:setup_wrapper(atom(),test_fun(),Callback,Callback) -> test_fun() when Callback :: {atom(),[any()]} cannot be right because the inferred return for setup_wrapper(Module::any(),TestFun::fun((_) -> {{_,atom(),1},fun(() -> any())}),{'init_per_testcase',[atom(),...]},{'end_per_testcase',[atom(),...]}) on line 49 is fun((_) -> {{_,_,_},fun(() -> any())} | {'setup',fun(() -> any()),fun((_) -> any())} | {'setup',fun(() -> any()),fun((_) -> any()),fun((_) -> any())})
+common_eunit.erl:86: The contract common_eunit:setup_wrapper(atom(),test_fun(),Callback,Callback) -> test_fun() when Callback :: {atom(),[any()]} cannot be right because the inferred return for setup_wrapper(Module::atom(),TestFun::fun(([atom() | tuple()]) -> none()),{'init_per_group',[atom(),...]},{'end_per_group',[atom(),...]}) on line 54 is fun((_) -> {{_,_,_},fun(() -> any())} | {'setup',fun(() -> any()),fun((_) -> any())} | {'setup',fun(() -> any()),fun((_) -> any()),fun((_) -> any())})

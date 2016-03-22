@@ -6,6 +6,9 @@
 %%	fun((config()) -> test_rep() | [test_rep()])
 %% instead. But this should not throw dialyzer into an infinite loop.
 %% This concerned dialyzer in R14B02 (and probably prior).
+%%
+%% Later it was seen that the contract for setup_wrapper() is wrong
+%% as it states that the two callbacks are to be the same.
 %%=====================================================================
 -module(common_eunit).
 
@@ -77,6 +80,9 @@ control_wrapper([Control|T], TestFun0) ->
 control_wrapper([], TestFun) ->
     TestFun.
 
+%% The contract is not correct since the two callbacks (argument 3 and
+%% 4) are said to be the same, but that is not how the function is
+%% (meant to be) used.
 -spec setup_wrapper(atom(), test_fun(), Callback, Callback) -> test_fun()
         when Callback :: {atom(), list()}.
 setup_wrapper(Module, TestFun, {Setup, SA}, {Cleanup, CA}) ->

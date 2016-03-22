@@ -1798,8 +1798,8 @@ map_pairwise_merge(F, As0, ADefK, ADefV, Bs0, BDefK, BDefV) ->
 -spec map_pairwise_merge_foldr(fun((erl_type(),
 				    t_map_mandatoriness(), erl_type(),
 				    t_map_mandatoriness(), erl_type(),
-				    Acc) -> Acc),
-			       Acc, erl_type(), erl_type()) -> Acc.
+				    A) -> B),
+			       A, erl_type(), erl_type()) -> B.
 
 map_pairwise_merge_foldr(F, AccIn, ?map(APairs, ADefK, ADefV),
 			 ?map(BPairs, BDefK, BDefV)) ->
