@@ -1,0 +1,15 @@
+
+type_vars.erl:13: Function t2/0 has no local return
+type_vars.erl:16: The contract type_vars:v2(A,A) -> A when A :: {'a',_} cannot be right because the inferred return for v2({'a', 1},{'a',2}) on line 14 is any()
+type_vars.erl:18: Function v2/2 has no local return
+type_vars.erl:18: Guard test {'a',2} =:= A::{'a',1} can never succeed
+type_vars.erl:21: Function t3/0 has no local return
+type_vars.erl:24: The contract type_vars:v3(B,B) -> B cannot be right because the inferred return for v3({'b', 1},{'b',2}) on line 22 is any()
+type_vars.erl:26: Function v3/2 has no local return
+type_vars.erl:26: Guard test {'b',2} =:= B::{'b',1} can never succeed
+type_vars.erl:29: Function t4/0 has no local return
+type_vars.erl:32: The contract type_vars:v4(A) -> A when A :: {'a',_} cannot be right because the inferred return for v4({'a',3}) on line 30 is {'a',2}
+type_vars.erl:38: Function t5/0 has no local return
+type_vars.erl:41: The contract type_vars:v5(type5(X),type5(X)) -> any() cannot be right because the inferred return for v5(1,2) on line 39 is {1,2}
+type_vars.erl:5: Function t1/0 has no local return
+type_vars.erl:8: The contract type_vars:v1(A,{A}) -> A when A :: tuple() cannot be right because the inferred return for v1({'a'},{{'b'}}) on line 6 is {'a'}
