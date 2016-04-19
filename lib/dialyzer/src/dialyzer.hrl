@@ -2,7 +2,7 @@
 %%%
 %%% %CopyrightBegin%
 %%%
-%%% Copyright Ericsson AB 2006-2015. All Rights Reserved.
+%%% Copyright Ericsson AB 2006-2016. All Rights Reserved.
 %%%
 %%% Licensed under the Apache License, Version 2.0 (the "License");
 %%% you may not use this file except in compliance with the License.
@@ -109,6 +109,8 @@
 -type anal_type1()    :: anal_type() | 'plt_add' | 'plt_check' | 'plt_remove'.
 -type contr_constr()  :: {'subtype', erl_types:erl_type(), erl_types:erl_type()}.
 -type contract_pair() :: {erl_types:erl_type(), [contr_constr()]}.
+-type contract_pairs() :: {Original :: contract_pair(),
+                           Substituted :: contract_pair()}.
 -type dial_define()   :: {atom(), term()}.
 -type dial_option()   :: {atom(), term()}.
 -type dial_options()  :: [dial_option()].
@@ -164,7 +166,7 @@
 		  check_plt       = true           :: boolean(),
                   solvers         = []             :: [solver()]}).
 
--record(contract, {contracts	  = []		   :: [contract_pair()],
+-record(contract, {contracts	  = []		   :: [contract_pairs()],
 		   args		  = []		   :: [erl_types:erl_type()],
 		   forms	  = []		   :: [{_, _}]}).
 

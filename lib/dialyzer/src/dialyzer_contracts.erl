@@ -224,7 +224,7 @@ check_contract(Contract, SuccType) ->
 check_contract(#contract{contracts = Contracts}, SuccType, Opaques) ->
   try
     Contracts1 = [{Contract, insert_constraints(Constraints)}
-		  || {Contract, Constraints} <- Contracts],
+		  || {_Orig, {Contract, Constraints}} <- Contracts],
     Contracts2 = [erl_types:t_subst(Contract, Map)
 		  || {Contract, Map} <- Contracts1],
     GenDomains = [erl_types:t_fun_args(C) || C <- Contracts2],
@@ -330,7 +330,7 @@ is_empty_map(Type) ->
   erl_types:t_is_equal(Type, erl_types:t_from_term(#{})).
 
 %% This is the heart of the "range function"
--spec process_contracts([contract_pair()], [erl_types:erl_type()]) ->
+-spec process_contracts([contract_pairs()], [erl_types:erl_type()]) ->
                            erl_types:erl_type().
 
 process_contracts(OverContracts, Args) ->
@@ -346,42 +346,198 @@ process_contracts([OverContract|Left], Args, AccRange) ->
 process_contracts([], _Args, AccRange) ->
   AccRange.
 
--spec process_contract(contract_pair(), [erl_types:erl_type()]) ->
+-spec process_contract(contract_pairs(), [erl_types:erl_type()]) ->
                           'error' | {'ok', erl_types:erl_type()}.
 
-process_contract({Contract, Constraints}, CallTypes0) ->
+process_contract(ContractPairs, CallTypes0) ->
+  {{OrigContract, OrigConstraints},
+   {Contract, Constraints}} = ContractPairs,
   CallTypesFun = erl_types:t_fun(CallTypes0, erl_types:t_any()),
   ContArgsFun = erl_types:t_fun(erl_types:t_fun_args(Contract),
 				erl_types:t_any()),
-  ?debug("Instance: Contract:  ~s\n          Arguments: ~s\n",
-	 [erl_types:t_to_string(ContArgsFun),
-	  erl_types:t_to_string(CallTypesFun)]),
-  case solve_constraints(ContArgsFun, CallTypesFun, Constraints) of
+  OrigContArgsFun = erl_types:t_fun(erl_types:t_fun_args(OrigContract),
+                                    erl_types:t_any()),
+  case solve_constraints(ContArgsFun, OrigContArgsFun,
+                         CallTypesFun, Constraints, OrigConstraints) of
     {ok, VarMap} ->
-      {ok, erl_types:t_subst(erl_types:t_fun_range(Contract), VarMap)};
+      Range = erl_types:t_fun_range(Contract),
+      NewRange = erl_types:t_subst(Range, VarMap),
+      OrigRange = erl_types:t_fun_range(OrigContract),
+      OrigNewRange = erl_types:t_subst(OrigRange, VarMap),
+      FinalRange = erl_types:t_inf(NewRange, OrigNewRange),
+      ?debug("Range: ~s\n", [erl_types:t_to_string(Range)]),
+      ?debug("NewRange: ~s\n", [erl_types:t_to_string(NewRange)]),
+      ?debug("OrigRange: ~s\n", [erl_types:t_to_string(OrigRange)]),
+      ?debug("OrigNewRange: ~s\n", [erl_types:t_to_string(OrigNewRange)]),
+      ?debug("FinalRange: ~s\n", [erl_types:t_to_string(FinalRange)]),
+      {ok, FinalRange};
     error -> error
   end.
 
-solve_constraints(Contract, Call, Constraints) ->
-  %% First make sure the call follows the constraints
-  CMap = insert_constraints(Constraints),
-  Contract1 = erl_types:t_subst(Contract, CMap),
-  %% Just a safe over-approximation.
-  %% TODO: Find the types for type variables properly
-  ContrArgs = erl_types:t_fun_args(Contract1),
-  CallArgs = erl_types:t_fun_args(Call),
-  InfList = erl_types:t_inf_lists(ContrArgs, CallArgs),
-  case erl_types:any_none_or_unit(InfList) of
-    true -> error;
-    false -> {ok, CMap}
+%% This treats the "when" constraints. It will be extended, we hope.
+solve_constraints(Contract, OrigContract, Call,
+                  Constraints, OrigConstraints) ->
+  ?debug("Instance:\n  Contract:  ~s\n  OrigContract:  ~s\n  Arguments: ~s\n",
+	 [erl_types:t_to_string(Contract),
+	  erl_types:t_to_string(OrigContract),
+	  erl_types:t_to_string(Call)]),
+  pp_constraints("  Constraints", Constraints),
+  pp_constraints("  OrigConstraints", OrigConstraints),
+
+  %% The original contract has type variables that substitutions have
+  %% replaced with types without variables. The extra constraints
+  %% generated from the original contract compensate for the lost
+  %% "sameness" caused by the substitutions.
+  Inf = erl_types:t_inf(Contract, Call),
+  OrigArgVarTypes =
+    erl_types:t_assign_variables_to_subtype(OrigContract, Inf),
+  pp_list("OrigArgVarTypes", OrigArgVarTypes),
+
+  ArgCs = [{sub, T1, T2} || {T1, T2} <- OrigArgVarTypes],
+  OrigCs = collect_constraints(OrigConstraints),
+  Cs = collect_constraints(Constraints),
+  Eqs = lists:usort(ArgCs ++ Cs ++ OrigCs),
+  {ok, VarMap} = solve_eqs(Eqs),
+
+  OrigInfList = inf_lists_from_args(OrigContract, Call, VarMap),
+  case erl_types:any_none_or_unit(OrigInfList) of
+    true ->  error;
+    false -> {ok, VarMap}
   end.
-  %%Inf = erl_types:t_inf(Contract1, Call),
-  %% Then unify with the constrained call type.
-  %%  ?debug("Call: ~s\n", [erl_types:t_to_string(Call)]),
-  %%  ?debug("Contract: ~s\n", [erl_types:t_to_string(Contract)]),
-  %%  ?debug("Contract1: ~s\n", [erl_types:t_to_string(Contract1)]),
-  %%  ?debug("Inf: ~s\n", [erl_types:t_to_string(Inf)]),
-  %%  erl_types:t_assign_variables_to_subtype(Contract, Inf).
+
+inf_lists_from_args(Contract, Call, VarMap) ->
+  CArgs = erl_types:t_fun_args(Contract),
+  Args = [erl_types:t_subst(A, VarMap) || A <- CArgs],
+  erl_types:t_inf_lists(Args, erl_types:t_fun_args(Call)).
+
+solve_eqs(L) ->
+  pp_eqs("EQ", L),
+  solve_it(L, maps:new()).
+
+solve_it(L, VarMap) ->
+  case solve(L, VarMap) of
+    VarMap ->
+      pp_map("Solved", VarMap),
+      {ok, VarMap};
+    VarMap1 ->
+      solve_it(L, VarMap1)
+  end.
+
+solve([], VarMap) ->
+  VarMap;
+solve([{Op, V, T}|L], VarMap) ->
+  VarMap1 = solve_one(Op, V, T, VarMap),
+  solve(L, VarMap1).
+
+solve_one(Op, V, T, VarMap) ->
+  T1 = look_up(V, VarMap),
+  %% Take care of sameness of type variables:
+  VarTypes = erl_types:t_assign_variables_to_subtype(T, T1),
+  pp_list("VarTypes", [VarTypes]),
+  F = dialyzer_utils:family(VarTypes),
+  L = [{erl_types:t_var_name(Var), erl_types:t_inf(Types)} ||
+        {Var, Types} <- F, length(Types) > 1],
+  VarMap1 = enter_type_list(L, VarMap),
+  T2 = look_up(T, VarMap1),
+  Inf = erl_types:t_inf(T1, T2),
+  ?debug("Solving: ~s :: ~s ~w ~s :: ~s\n\tInf: ~s\n",
+	 [erl_types:t_to_string(V), erl_types:t_to_string(T1), Op,
+	  erl_types:t_to_string(T), erl_types:t_to_string(T2),
+          erl_types:t_to_string(Inf)]),
+  case solve_one1(Op, V, Inf, VarMap) of
+    error ->
+      enter_type(erl_types:t_var_name(V), erl_types:t_none(), VarMap);
+    {ok, VarMap2} ->
+      VarMap2
+  end.
+
+solve_one1(sub, V, Inf, VarMap) ->
+  case erl_types:t_is_none(Inf) of
+    true -> error;
+    false ->
+      try erl_types:t_unify(V, Inf) of
+        {_, List} ->
+          {ok, enter_type_list(List, VarMap)}
+      catch
+        throw:{mismatch, _T1, _T2} ->
+          ?debug("Mismatch between ~s and ~s\n",
+                 [erl_types:t_to_string(_T1), erl_types:t_to_string(_T2)]),
+          error
+      end
+  end.
+
+enter_type_list([], VarMap) ->
+  VarMap;
+enter_type_list([{K, V}|L], VarMap) ->
+  VarMap1 = enter_type(K, V, VarMap),
+  enter_type_list(L, VarMap1).
+
+enter_type(Key, Val, VarMap) ->
+  ?debug("Entering ~s :: ~s\n", [erl_types:t_to_string(erl_types:t_var(Key)),
+                                 erl_types:t_to_string(Val)]),
+  case maps:find(Key, VarMap) of
+    {ok, Value} ->
+      case erl_types:t_is_equal(Value, Val) of
+        true -> VarMap;
+        false -> store(Key, Val, VarMap)
+      end;
+    error ->
+      case erl_types:t_is_any(Val) of
+        true -> VarMap;
+        false -> store(Key, Val, VarMap)
+      end
+  end.
+
+store(Key, Val, VarMap) ->
+  ?debug("Storing ~w :: ~s\n", [Key, erl_types:t_to_string(Val)]),
+  maps:put(Key, Val, VarMap).
+
+look_up(Id, VarMap) ->
+  erl_types:t_subst(Id, VarMap).
+
+-ifdef(DEBUG).
+pp_constraints(T, []) ->
+  io:format("~s: empty\n", [T]);
+pp_constraints(T, Cs) ->
+  io:format("~s:\n", [T]),
+  _ = [io:format("    ~s :: ~s\n", [erl_types:t_to_string(T1),
+                                    erl_types:t_to_string(T2)]) ||
+        {subtype, T1, T2} <- Cs],
+    ok.
+
+pp_map(T, Map) ->
+  L = [{erl_types:t_var(V), Type} ||
+        {V, Type} <- lists:sort(maps:to_list(D))],
+  pp_list(T, L).
+
+pp_list(T, []) ->
+  io:format("<~s>: empty\n", [T]);
+pp_list(T, L) ->
+  io:format("<~s>\n", [T]),
+  _ = [io:format("    ~s: ~s\n", [erl_types:t_to_string(V),
+                                  erl_types:t_to_string(Type)]) ||
+        {V, Type} <- lists:sort(L)],
+  io:format("</~s>\n", [T]),
+  ok.
+
+pp_eqs(_T, []) ->
+  ok;
+pp_eqs(T, L) ->
+  io:format("<~s>\n", [T]),
+  _ = [io:format(" ~s ~w ~s\n",
+                 [erl_types:t_to_string(T1), Op, erl_types:t_to_string(T2)]) ||
+        {Op, T1, T2} <- lists:sort(L)],
+  io:format("</~s>\n", [T]),
+  ok.
+-else.
+pp_constraints(_, _) -> ok.
+
+pp_map(_, _) -> ok.
+
+pp_list(_, _) -> ok.
+
+pp_eqs(_, _) -> ok.
+-endif.
 
 -type contracts() :: dict:dict(mfa(),dialyzer_contracts:file_contract()).
 
@@ -401,6 +557,19 @@ warn_spec_missing_fun({M, F, A} = MFA, Contracts) ->
   {{File, Line}, _Contract, _Xtra} = dict:fetch(MFA, Contracts),
   WarningInfo = {File, Line, MFA},
   {?WARN_CONTRACT_SYNTAX, WarningInfo, {spec_missing_fun, [M, F, A]}}.
+
+collect_constraints(L) ->
+  collect_constraints(L, []).
+
+collect_constraints([{subtype, Type1, Type2}|Left], L) ->
+  case erl_types:t_is_var(Type1) of
+    true -> collect_constraints(Left, [{sub, Type1, Type2}|L]);
+    false ->
+      %% A lot of things should change to add supertypes
+      throw({error, io_lib:format("First argument of is_subtype constraint "
+				  "must be a type variable: ~p\n", [Type1])})
+  end;
+collect_constraints([], L) -> L.
 
 %% This treats the "when" constraints. It will be extended, we hope.
 insert_constraints(Constraints) ->
@@ -431,17 +600,17 @@ insert_constraints([], Map) -> Map.
 -spec store_tmp_contract(mfa(), file_line(), spec_data(), contracts(), types()) ->
         contracts().
 
-store_tmp_contract(MFA, FileLine, {TypeSpec, Xtra}, SpecDict, RecordsDict) ->
+store_tmp_contract(MFA, FileLine, {TypeSpec, Xtra}, SpecDict, _RecordsDict) ->
   %% io:format("contract from form: ~p\n", [TypeSpec]),
-  TmpContract = contract_from_form(TypeSpec, MFA, RecordsDict, FileLine),
+  TmpContract = contract_from_form(TypeSpec, MFA, FileLine),
   %% io:format("contract: ~p\n", [TmpContract]),
   dict:store(MFA, {FileLine, TmpContract, Xtra}, SpecDict).
 
-contract_from_form(Forms, MFA, RecDict, FileLine) ->
-  {CFuns, Forms1} = contract_from_form(Forms, MFA, RecDict, FileLine, [], []),
+contract_from_form(Forms, MFA, FileLine) ->
+  {CFuns, Forms1} = contract_from_form(Forms, MFA, FileLine, [], []),
   #tmp_contract{contract_funs = CFuns, forms = Forms1}.
 
-contract_from_form([{type, _, 'fun', [_, _]} = Form | Left], MFA, RecDict,
+contract_from_form([{type, _, 'fun', [_, _]} = Form | Left], MFA,
 		   FileLine, TypeAcc, FormAcc) ->
   TypeFun =
     fun(ExpTypes, AllRecords, Cache) ->
@@ -455,46 +624,44 @@ contract_from_form([{type, _, 'fun', [_, _]} = Form | Left], MFA, RecDict,
                                                    Line, Msg]),
 	      throw({error, NewMsg})
 	  end,
-        NewTypeNoVars = erl_types:subst_all_vars_to_any(NewType),
-	{{NewTypeNoVars, []}, NewCache}
+	{{{NewType, []}, {NewType, []}}, NewCache}
     end,
   NewTypeAcc = [TypeFun | TypeAcc],
   NewFormAcc = [{Form, []} | FormAcc],
-  contract_from_form(Left, MFA, RecDict, FileLine, NewTypeAcc, NewFormAcc);
+  contract_from_form(Left, MFA, FileLine, NewTypeAcc, NewFormAcc);
 contract_from_form([{type, _L1, bounded_fun,
 		     [{type, _L2, 'fun', [_, _]} = Form, Constr]}| Left],
-		   MFA, RecDict, FileLine, TypeAcc, FormAcc) ->
+		   MFA, FileLine, TypeAcc, FormAcc) ->
   TypeFun =
     fun(ExpTypes, AllRecords, Cache) ->
-	{Constr1, VarTable, Cache1} =
-	  process_constraints(Constr, MFA, RecDict, ExpTypes, AllRecords,
-                              Cache),
+        {Init, Cache1} =
+          set_up_constraints(Constr, MFA, ExpTypes, AllRecords, Cache),
+        {OrigType, Cache2} =
+          from_form_with_check(Form, ExpTypes, MFA, AllRecords, Cache1),
+	{Constr1, VarTab, Cache3} =
+	  constraints_fixpoint(Init, MFA, ExpTypes, AllRecords, Cache2),
+        {OrigConstr, Cache4} =
+          constraints_to_subs(Init, MFA, ExpTypes, AllRecords, maps:new(),
+                              Cache3, []),
         {NewType, NewCache} =
           from_form_with_check(Form, ExpTypes, MFA, AllRecords,
-                               VarTable, Cache1),
-        NewTypeNoVars = erl_types:subst_all_vars_to_any(NewType),
-	{{NewTypeNoVars, Constr1}, NewCache}
+                               VarTab, Cache4),
+	{{{OrigType, OrigConstr}, {NewType, Constr1}}, NewCache}
     end,
   NewTypeAcc = [TypeFun | TypeAcc],
   NewFormAcc = [{Form, Constr} | FormAcc],
-  contract_from_form(Left, MFA, RecDict, FileLine, NewTypeAcc, NewFormAcc);
-contract_from_form([], _MFA, _RecDict, _FileLine, TypeAcc, FormAcc) ->
+  contract_from_form(Left, MFA, FileLine, NewTypeAcc, NewFormAcc);
+contract_from_form([], _MFA, _FileLine, TypeAcc, FormAcc) ->
   {lists:reverse(TypeAcc), lists:reverse(FormAcc)}.
 
-process_constraints(Constrs, MFA, RecDict, ExpTypes, AllRecords, Cache) ->
-  {Init0, NewCache} = initialize_constraints(Constrs, MFA, RecDict, ExpTypes,
-                                             AllRecords, Cache),
-  Init = remove_cycles(Init0),
-  constraints_fixpoint(Init, MFA, RecDict, ExpTypes, AllRecords, NewCache).
+set_up_constraints(Constrs, MFA, ExpTypes, AllRecords, Cache) ->
+  {Init0, NewCache} =
+    initialize_constraints(Constrs, MFA, ExpTypes, AllRecords, Cache, []),
+  {remove_cycles(Init0), NewCache}.
 
-initialize_constraints(Constrs, MFA, RecDict, ExpTypes, AllRecords, Cache) ->
-  initialize_constraints(Constrs, MFA, RecDict, ExpTypes, AllRecords,
-                         Cache, []).
-
-initialize_constraints([], _MFA, _RecDict, _ExpTypes, _AllRecords,
-                       Cache, Acc) ->
+initialize_constraints([], _MFA, _ExpTypes, _AllRecords, Cache, Acc) ->
   {Acc, Cache};
-initialize_constraints([Constr|Rest], MFA, RecDict, ExpTypes, AllRecords,
+initialize_constraints([Constr|Rest], MFA, ExpTypes, AllRecords,
                        Cache, Acc) ->
   case Constr of
     {type, _, constraint, [{atom, _, is_subtype}, [Type1, Type2]]} ->
@@ -502,7 +669,7 @@ initialize_constraints([Constr|Rest], MFA, RecDict, ExpTypes, AllRecords,
       {T1, NewCache} =
         final_form(Type1, ExpTypes, MFA, AllRecords, VarTable, Cache),
       Entry = {T1, Type2},
-      initialize_constraints(Rest, MFA, RecDict, ExpTypes, AllRecords,
+      initialize_constraints(Rest, MFA, ExpTypes, AllRecords,
                              NewCache, [Entry|Acc]);
     {type, _, constraint, [{atom,_,Name}, List]} ->
       N = length(List),
@@ -510,18 +677,15 @@ initialize_constraints([Constr|Rest], MFA, RecDict, ExpTypes, AllRecords,
 	     io_lib:format("Unsupported type guard ~w/~w\n", [Name, N])})
   end.
 
-constraints_fixpoint(Constrs, MFA, RecDict, ExpTypes, AllRecords, Cache) ->
+constraints_fixpoint(Constrs, MFA, ExpTypes, AllRecords, Cache) ->
   VarTable = erl_types:var_table__new(),
   {VarTab, NewCache} =
-    constraints_to_dict(Constrs, MFA, RecDict, ExpTypes, AllRecords,
-                        VarTable, Cache),
-  constraints_fixpoint(VarTab, MFA, Constrs, RecDict, ExpTypes,
-                       AllRecords, NewCache).
+    constraints_to_dict(Constrs, MFA, ExpTypes, AllRecords, VarTable, Cache),
+  constraints_fixpoint(VarTab, MFA, Constrs, ExpTypes, AllRecords, NewCache).
 
-constraints_fixpoint(OldVarTab, MFA, Constrs, RecDict, ExpTypes,
-                     AllRecords, Cache) ->
+constraints_fixpoint(OldVarTab, MFA, Constrs, ExpTypes, AllRecords, Cache) ->
   {NewVarTab, NewCache} =
-    constraints_to_dict(Constrs, MFA, RecDict, ExpTypes, AllRecords,
+    constraints_to_dict(Constrs, MFA, ExpTypes, AllRecords,
                         OldVarTab, Cache),
   case NewVarTab of
     OldVarTab ->
@@ -532,7 +696,7 @@ constraints_fixpoint(OldVarTab, MFA, Constrs, RecDict, ExpTypes,
       FinalConstrs = maps:fold(Fun, [], NewVarTab),
       {FinalConstrs, NewVarTab, NewCache};
     _Other ->
-      constraints_fixpoint(NewVarTab, MFA, Constrs, RecDict, ExpTypes,
+      constraints_fixpoint(NewVarTab, MFA, Constrs, ExpTypes,
                            AllRecords, NewCache)
   end.
 
@@ -549,22 +713,20 @@ from_form_with_check(Form, ExpTypes, MFA, AllRecords, VarTable, Cache) ->
                                        VarTable, Cache),
   erl_types:t_from_form(Form, ExpTypes, Site, AllRecords, VarTable, C1).
 
-constraints_to_dict(Constrs, MFA, RecDict, ExpTypes, AllRecords,
-                    VarTab, Cache) ->
-  {Subtypes, NewCache} =
-    constraints_to_subs(Constrs, MFA, RecDict, ExpTypes, AllRecords,
-                        VarTab, Cache, []),
+constraints_to_dict(Constrs, MFA, ExpTypes, AllRecords, VarTab, Cache) ->
+  {Subtypes, NewCache} = constraints_to_subs(Constrs, MFA, ExpTypes,
+                                             AllRecords, VarTab, Cache, []),
   {insert_constraints(Subtypes), NewCache}.
 
-constraints_to_subs([], _MFA, _RecDict, _ExpTypes, _AllRecords,
-                    _VarTab, Cache, Acc) ->
+constraints_to_subs([], _MFA, _ExpTypes, _AllRecords, _VarTab, Cache, Acc) ->
   {Acc, Cache};
-constraints_to_subs([{T1, Form2}|Rest], MFA, RecDict, ExpTypes, AllRecords,
+constraints_to_subs([C|Rest], MFA, ExpTypes, AllRecords,
                     VarTab, Cache, Acc) ->
+  {T1, Form2} = C,
   {T2, NewCache} =
     final_form(Form2, ExpTypes, MFA, AllRecords, VarTab, Cache),
   NewAcc = [{subtype, T1, T2}|Acc],
-  constraints_to_subs(Rest, MFA, RecDict, ExpTypes, AllRecords,
+  constraints_to_subs(Rest, MFA, ExpTypes, AllRecords,
                       VarTab, NewCache, NewAcc).
 
 %% Replaces variables with '_' when necessary to break up cycles among
@@ -644,7 +806,7 @@ remove_use(T, _V) -> T.
 general_domain(List) ->
   general_domain(List, erl_types:t_none()).
 
-general_domain([{Sig, Constraints}|Left], AccSig) ->
+general_domain([{{_OrigSig, _OrigCs}, {Sig, Constraints}}|Left], AccSig) ->
   Map = insert_constraints(Constraints),
   Sig1 = erl_types:t_subst(Sig, Map),
   general_domain(Left, erl_types:t_sup(AccSig, Sig1));
