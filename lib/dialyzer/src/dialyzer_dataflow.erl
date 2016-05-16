@@ -319,7 +319,7 @@ traverse(Tree, Map, State) ->
     seq ->
       Arg = cerl:seq_arg(Tree),
       Body = cerl:seq_body(Tree),
-      {State1, Map1, ArgType, _CheckType} = SMAC = traverse(Arg, Map, State),
+      {State1, Map1, ArgType, CheckType} = SMAC = traverse(Arg, Map, State),
       case t_is_none_or_unit(ArgType) of
 	true ->
 	  SMAC;
@@ -327,6 +327,7 @@ traverse(Tree, Map, State) ->
 	  State2 =
 	    case
               t_is_any(ArgType)
+              orelse CheckType =:= ignore_type
               orelse t_is_simple(ArgType, State)
               orelse is_call_to_send(Arg)
 	      orelse is_lc_simple_list(Arg, ArgType, State)
@@ -957,9 +958,16 @@ handle_call(Tree, Map, State) ->
 	    {[MAtom], [FAtom]} ->
 	      FunInfo = [{remote, state__fun_info({MAtom, FAtom, length(Args)},
 						  State1)}],
+              IsSend = (MAtom =:= erlang
+                        andalso is_send(FAtom)
+                        andalso length(Args) =:= 2),
+              CheckType = case IsSend of
+                            true -> ignore_type;
+                            false -> check_type
+                          end,
 	      {State2, Map3, Type} =
                 handle_apply_or_call(FunInfo, Args, As, Map2, Tree, State1),
-              {State2, Map3, Type, check_type};
+              {State2, Map3, Type, CheckType};
 	    {_MAtoms, _FAtoms} ->
 	      {State1, Map2, t_any(), check_type}
 	  end;
@@ -1063,7 +1071,11 @@ handle_let(Tree, Map, State) ->
     false ->
       Map2 = enter_type_lists(Vars, t_to_tlist(ArgTypes), Map1),
       {State3, Map3, BodyType, CheckType0} = traverse(Body, Map2, State2),
-      {State3, Map3, BodyType, CheckType0}
+      CheckType = case cerl:is_c_var(Body) of
+                    true -> ignore_type;
+                    false -> CheckType0
+                  end,
+      {State3, Map3, BodyType, CheckType}
   end.
 
 %%----------------------------------------
@@ -1113,11 +1125,14 @@ handle_receive(Tree, Map, State) ->
       {State4, Map2, ReceiveType, CheckType0};
     false ->
       Action = cerl:receive_action(Tree),
-      {State5, Map3, ActionType, _ActionCheckType} =
+      {State5, Map3, ActionType, ActionCheckType} =
         traverse(Action, Map, State4),
       Map4 = join_maps([Map3, Map1], Map),
+      CheckType = case_check_type([ReceiveType, ActionType],
+                                  [CheckType0, ActionCheckType],
+                                  State5),
       Type = t_sup(ReceiveType, ActionType),
-      {State5, Map4, Type, check_type}
+      {State5, Map4, Type, CheckType}
   end.
 
 %%----------------------------------------
@@ -1130,7 +1145,7 @@ handle_try(Tree, Map, State) ->
   Handler = cerl:try_handler(Tree),
   {State1, Map1, ArgType, _} = traverse(Arg, Map, State),
   Map2 = mark_as_fresh(Vars, Map1),
-  {SuccState, SuccMap, SuccType, _SuccCheckType} =
+  {SuccState, SuccMap, SuccType, SuccCheckType} =
     case bind_pat_vars(Vars, t_to_tlist(ArgType), [], Map2, State1) of
       {error, _, _, _, _} ->
 	{State1, map__new(), t_none(), check_type};
@@ -1146,10 +1161,13 @@ handle_try(Tree, Map, State) ->
 	traverse(Body, SuccMap2, State1)
     end,
   ExcMap1 = mark_as_fresh(EVars, Map),
-  {State2, ExcMap2, HandlerType, _HandlerCheckType} =
+  {State2, ExcMap2, HandlerType, HandlerCheckType} =
     traverse(Handler, ExcMap1, SuccState),
+  CheckType = case_check_type([SuccType, HandlerType],
+                              [SuccCheckType, HandlerCheckType],
+                              State2),
   TryType = t_sup(SuccType, HandlerType),
-  {State2, join_maps([ExcMap2, SuccMap], Map1), TryType, check_type}.
+  {State2, join_maps([ExcMap2, SuccMap], Map1), TryType, CheckType}.
 
 %%----------------------------------------
 
@@ -1305,7 +1323,7 @@ handle_clauses([C|Left], Arg, ArgType, OrigArgType, State, CaseTypes, MapIn,
   handle_clauses(Left, Arg, NewArgType, OrigArgType, State3, NewCaseTypes,
                  MapIn, NewAcc, NewClauseAcc, NewCheckTypes, WarnAcc);
 handle_clauses([], _Arg, _ArgType, _OrigArgType, State, CaseTypes, _MapIn,
-               Acc, ClauseAcc, _CheckTypes, WarnAcc) ->
+               Acc, ClauseAcc, CheckTypes, WarnAcc) ->
   State1 =
     case is_race_analysis_enabled(State) of
       true ->
@@ -1315,7 +1333,17 @@ handle_clauses([], _Arg, _ArgType, _OrigArgType, State, CaseTypes, _MapIn,
 	  RaceListSize + 1, State);
       false -> State
     end,
-  {lists:reverse(Acc), State1, t_sup(CaseTypes), check_type, WarnAcc}.
+  CheckType = case_check_type(CaseTypes, CheckTypes, State1),
+  {lists:reverse(Acc), State1, t_sup(CaseTypes), CheckType, WarnAcc}.
+
+case_check_type(CaseTypes, CheckTypes, State) ->
+  F = fun({CheckType, Type}) ->
+          CheckType =:= check_type andalso not t_is_simple(Type, State)
+      end,
+  case lists:any(F, lists:zip(CheckTypes, CaseTypes)) of
+    true  -> check_type;
+    false -> ignore_type
+  end.
 
 do_clause(C, Arg, ArgType0, OrigArgType, Map, State, Warns) ->
   Pats = cerl:clause_pats(C),
@@ -1483,7 +1511,18 @@ do_clause(C, Arg, ArgType0, OrigArgType, Map, State, Warns) ->
         Map4 ->
           {RetState, RetMap, BodyType, CheckType0} =
             traverse(Body, Map4, State1),
-          {RetState, RetMap, BodyType, NewArgType, CheckType0, Warns}
+          CheckType = case CheckType0 of
+                        ignore_type -> ignore_type;
+                        check_type ->
+                          case
+                            is_compiler_generated(cerl:get_ann(Body)) andalso
+                            lists:member(match, cerl:get_ann(C))
+                          of
+                            true -> ignore_type;
+                            false -> check_type
+                          end
+                      end,
+          {RetState, RetMap, BodyType, NewArgType, CheckType, Warns}
       end
   end.
 

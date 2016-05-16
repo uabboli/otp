@@ -712,7 +712,8 @@ expr({match,L,P0,E0}, St0) ->
 	    Eps = Eps3 ++ Eps4 ++ [Fail],
 	    {#imatch{anno=#a{anno=Lanno},pat=SanPat,arg=Expr,fc=Fc},Eps,St};
 	Other when not is_atom(Other) ->
-	    {#imatch{anno=#a{anno=Lanno},pat=P2,arg=E2,fc=Fc},Eps1++Eps2,St5}
+            Lanno1 = match_anno(Lanno, St5),
+	    {#imatch{anno=#a{anno=Lanno1},pat=P2,arg=E2,fc=Fc},Eps1++Eps2,St5}
     end;
 expr({op,_,'++',{lc,Llc,E,Qs0},More}, St0) ->
     %% Optimise '++' here because of the list comprehension algorithm.
@@ -2413,6 +2414,14 @@ record_anno(L, St) ->
             [record | lineno_anno(L, St)];
         false ->
             full_anno(L, St)
+    end.
+
+match_anno(A, St) ->
+    case member(dialyzer, St#core.opts) of
+        true ->
+            [match | A];
+        false ->
+            A
     end.
 
 full_anno(L, #core{wanted=false}=St) ->

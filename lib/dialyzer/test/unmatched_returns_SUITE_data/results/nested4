@@ -1,0 +1,7 @@
+
+nested4.erl:17: Expression produces a value of type {1,1}, but this value is unmatched
+nested4.erl:31: Expression produces a value of type {1,1}, but this value is unmatched
+nested4.erl:37: Expression produces a value of type {1,1}, but this value is unmatched
+nested4.erl:44: Expression produces a value of type {1,1}, but this value is unmatched
+nested4.erl:50: Expression produces a value of type 1 | {1,1}, but this value is unmatched
+nested4.erl:65: Expression produces a value of type {1,1}, but this value is unmatched
