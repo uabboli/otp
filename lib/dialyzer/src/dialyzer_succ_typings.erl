@@ -141,22 +141,36 @@ get_refined_success_typings(SCCs, #st{callgraph = Callgraph,
 
 get_warnings(Callgraph, Plt, DocPlt, Codeserver,
 	     TimingServer, Solvers, Parent) ->
+{T0, _} = statistics(runtime),
+io:format("rad 1~n"),
   InitState =
     init_state_and_get_success_typings(Callgraph, Plt, Codeserver,
 				       TimingServer, Solvers, Parent),
+{T1, _} = statistics(runtime),
+io:format("rad 2 ~p~n", [T1 - T0]),
   Mods = dialyzer_callgraph:modules(InitState#st.callgraph),
   MiniPlt = InitState#st.plt,
+io:format("rad 3~n"),
   FindOpaques = lookup_and_find_opaques_fun(Codeserver),
+{T2, _} = statistics(runtime),
+io:format("rad 31 ~p~n", [T2 - T1]),
   CWarns =
     dialyzer_contracts:get_invalid_contract_warnings(Mods, Codeserver,
                                                      MiniPlt, FindOpaques),
+{T3, _} = statistics(runtime),
+io:format("rad 4 ~p~n", [T3 - T2]),
   MiniDocPlt = dialyzer_plt:get_mini_plt(DocPlt),
   ModWarns =
     ?timing(TimingServer, "warning",
 	    get_warnings_from_modules(Mods, InitState, MiniDocPlt)),
-  {postprocess_warnings(CWarns ++ ModWarns, Codeserver),
+io:format("sleep...\n"),
+timer:sleep(10),
+  Ret = {postprocess_warnings(CWarns ++ ModWarns, Codeserver),
    dialyzer_plt:restore_full_plt(MiniPlt, Plt),
-   dialyzer_plt:restore_full_plt(MiniDocPlt, DocPlt)}.
+   dialyzer_plt:restore_full_plt(MiniDocPlt, DocPlt)},
+{T12, _} = statistics(runtime),
+io:format("rad 5 ~p~n", [T12 - T3]),
+  Ret.
 
 get_warnings_from_modules(Mods, State, DocPlt) ->
   #st{callgraph = Callgraph, codeserver = Codeserver,

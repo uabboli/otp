@@ -181,13 +181,19 @@ analysis_start(Parent, Analysis, LegalWarnings) ->
       true -> dialyzer_callgraph:put_race_detection(true, Callgraph);
       false -> Callgraph
     end,
+{T0, _} = statistics(runtime),
+io:format("analyze 1~n"),
   State2 = analyze_callgraph(NewCallgraph, State1#analysis_state{plt = Plt1}),
+{T1, _} = statistics(runtime),
+io:format("analyze 2 ~p~n", [T1 - T0]),
   dialyzer_callgraph:dispose_race_server(NewCallgraph),
   rcv_and_send_ext_types(Parent),
   NonExports = sets:subtract(sets:from_list(AllNodes), Exports),
   NonExportsList = sets:to_list(NonExports),
   Plt2 = dialyzer_plt:delete_list(State2#analysis_state.plt, NonExportsList),
   send_codeserver_plt(Parent, CServer, State2#analysis_state.plt),
+{T2, _} = statistics(runtime),
+io:format("analyze 3 ~p~n", [T2 - T1]),
   send_analysis_done(Parent, Plt2, State2#analysis_state.doc_plt).
 
 analyze_callgraph(Callgraph, #analysis_state{codeserver = Codeserver,
@@ -195,6 +201,8 @@ analyze_callgraph(Callgraph, #analysis_state{codeserver = Codeserver,
 					     timing_server = TimingServer,
 					     parent = Parent,
                                              solvers = Solvers} = State) ->
+{T0, _} = statistics(runtime),
+io:format("anal cg 0~n", []),
   Plt = dialyzer_plt:insert_callbacks(State#analysis_state.plt, Codeserver),
   {NewPlt, NewDocPlt} =
     case State#analysis_state.analysis_type of
@@ -204,11 +212,17 @@ analyze_callgraph(Callgraph, #analysis_state{codeserver = Codeserver,
 						  TimingServer, Solvers, Parent),
 	{NewPlt0, DocPlt};
       succ_typings ->
+{T10, _} = statistics(runtime),
+io:format("anal cg 100 ~p~n", [T10 - T0]),
 	{Warnings, NewPlt0, NewDocPlt0} =
 	  dialyzer_succ_typings:get_warnings(Callgraph, Plt, DocPlt, Codeserver,
 					     TimingServer, Solvers, Parent),
+{T1, _} = statistics(runtime),
+io:format("anal cg 1 ~p~n", [T1 - T10]),
         Warnings1 = filter_warnings(Warnings, Codeserver),
 	send_warnings(State#analysis_state.parent, Warnings1),
+{T2, _} = statistics(runtime),
+io:format("anal cg 2 ~p~n", [T2 - T1]),
 	{NewPlt0, NewDocPlt0}
     end,
   dialyzer_callgraph:delete(Callgraph),

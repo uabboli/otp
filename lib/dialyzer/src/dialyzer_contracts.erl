@@ -824,10 +824,13 @@ get_invalid_contract_warnings(Modules, CodeServer, Plt, FindOpaques) ->
   get_invalid_contract_warnings_modules(Modules, CodeServer, Plt, FindOpaques, []).
 
 get_invalid_contract_warnings_modules([Mod|Mods], CodeServer, Plt, FindOpaques, Acc) ->
+io:format("get 1 ~p~n", [Mod]),
   Contracts1 = dialyzer_codeserver:lookup_mod_contracts(Mod, CodeServer),
   Contracts2 = dict:to_list(Contracts1),
   Records = dialyzer_codeserver:lookup_mod_records(Mod, CodeServer),
+io:format("get 2 ~p~n", [Mod]),
   NewAcc = get_invalid_contract_warnings_funs(Contracts2, Plt, Records, FindOpaques, Acc),
+io:format("get 3 ~p~n", [Mod]),
   get_invalid_contract_warnings_modules(Mods, CodeServer, Plt, FindOpaques, NewAcc);
 get_invalid_contract_warnings_modules([], _CodeServer, _Plt, _FindOpaques, Acc) ->
   Acc.
@@ -841,8 +844,14 @@ get_invalid_contract_warnings_funs([{MFA, {FileLine, Contract, _Xtra}}|Left],
     {value, {Ret, Args}} ->
       Sig = erl_types:t_fun(Args, Ret),
       {M, _F, _A} = MFA,
-      %% io:format("MFA ~p~n", [MFA]),
+      io:format("MFA ~p~n", [MFA]),
+{T0, _} = statistics(runtime),
+io:format("hm 1~n"),
+io:format("Signature: ~s\n", [erl_types:t_to_string(erl_types:t_unopaque(Sig))]),
+%io:format("Contract: ~s\n", [contract_to_string(Contract)]),
       Opaques = FindOpaques(M),
+{T1, _} = statistics(runtime),
+io:format("hm 2 ~p~n", [T1-T0]),
       {File, Line} = FileLine,
       WarningInfo = {File, Line, MFA},
       NewAcc =
@@ -871,8 +880,12 @@ get_invalid_contract_warnings_funs([{MFA, {FileLine, Contract, _Xtra}}|Left],
 	    [{?WARN_CONTRACT_SYNTAX, WarningInfo, Msg}|Acc];
 	  ok ->
 	    {M, F, A} = MFA,
+{T2, _} = statistics(runtime),
+io:format("hm 3 ~p~n", [T2 - T1]),
 	    CSig0 = get_contract_signature(Contract),
 	    CSig = erl_types:subst_all_vars_to_any(CSig0),
+{T11, _} = statistics(runtime),
+io:format("hm 3 ~p~n", [T11 - T2]),
 	    case erl_bif_types:is_known(M, F, A) of
 	      true ->
 		%% This is strictly for contracts of functions also in
@@ -885,12 +898,18 @@ get_invalid_contract_warnings_funs([{MFA, {FileLine, Contract, _Xtra}}|Left],
 		    [invalid_contract_warning(MFA, WarningInfo, BifSig, RecDict)
 		     |Acc];
 		  ok ->
-		    picky_contract_check(CSig, BifSig, MFA, WarningInfo,
-					 Contract, RecDict, Acc)
+		    Ret19 = picky_contract_check(CSig, BifSig, MFA, WarningInfo,
+					 Contract, RecDict, Acc),
+{T3, _} = statistics(runtime),
+io:format("hm 4 ~p~n~n", [T3-T11]),
+                    Ret19
 		end;
 	      false ->
-		picky_contract_check(CSig, Sig, MFA, WarningInfo, Contract,
-				     RecDict, Acc)
+		Ret17 = picky_contract_check(CSig, Sig, MFA, WarningInfo, Contract,
+				     RecDict, Acc),
+{T3, _} = statistics(runtime),
+io:format("hm 4 ~p~n~n", [T3-T11]),
+                 Ret17
 	    end
 	end,
       get_invalid_contract_warnings_funs(Left, Plt, RecDict, FindOpaques, NewAcc)
@@ -912,8 +931,14 @@ extra_range_warning({M, F, A}, WarningInfo, ExtraRanges, STRange) ->
    {extra_range, [M, F, A, ERangesStr, STRangeStr]}}.
 
 picky_contract_check(CSig0, Sig0, MFA, WarningInfo, Contract, RecDict, Acc) ->
+{T3, _} = statistics(runtime),
+io:format("picky 1~n"),
   CSig = erl_types:t_abstract_records(CSig0, RecDict),
+{T4, _} = statistics(runtime),
+io:format("picky 10 ~p~n", [T4 - T3]),
   Sig = erl_types:t_abstract_records(Sig0, RecDict),
+{T5, _} = statistics(runtime),
+io:format("picky 11 ~p~n", [T5 - T4]),
   case erl_types:t_is_equal(CSig, Sig) of
     true -> Acc;
     false ->
@@ -921,9 +946,14 @@ picky_contract_check(CSig0, Sig0, MFA, WarningInfo, Contract, RecDict, Acc) ->
 	    erl_types:t_is_unit(erl_types:t_fun_range(CSig))) of
 	true -> Acc;
 	false ->
+{T0, _} = statistics(runtime),
+io:format("picky 2 ~p~n", [T0 - T5]),
 	  case extra_contract_warning(MFA, WarningInfo, Contract,
 				      CSig0, Sig0, RecDict) of
-	    no_warning -> Acc;
+	    no_warning ->
+{T1, _} = statistics(runtime),
+io:format("picky 3 ~p~n", [T1 - T0]),
+              Acc;
 	    {warning, Warning} -> [Warning|Acc]
 	  end
       end
