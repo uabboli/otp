@@ -109,8 +109,10 @@
 -type anal_type1()    :: anal_type() | 'plt_add' | 'plt_check' | 'plt_remove'.
 -type contr_constr()  :: {'subtype', erl_types:erl_type(), erl_types:erl_type()}.
 -type contract_pair() :: {erl_types:erl_type(), [contr_constr()]}.
--type contract_pairs() :: {Original :: contract_pair(),
-                           Substituted :: contract_pair()}.
+-type contract_pairs() :: {'pairs',
+                           Original :: contract_pair(),
+                           Substituted :: contract_pair()}
+                        | {'pair', contract_pair()}.
 -type dial_define()   :: {atom(), term()}.
 -type dial_option()   :: {atom(), term()}.
 -type dial_options()  :: [dial_option()].

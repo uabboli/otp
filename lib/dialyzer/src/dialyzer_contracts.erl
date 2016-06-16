@@ -221,8 +221,9 @@ check_contracts(Contracts, Callgraph, FunTypes, FindOpaques) ->
 check_contract(Contract, SuccType) ->
   check_contract(Contract, SuccType, 'universe').
 
-check_contract(#contract{contracts = Contracts}, SuccType, Opaques) ->
+check_contract(#contract{contracts = Contracts0}, SuccType, Opaques) ->
   try
+    Contracts = [from_contract_pairs(Cs) || Cs <- Contracts0],
     Contracts1 = [{Contract, insert_constraints(Constraints)}
 		  || {_Orig, {Contract, Constraints}} <- Contracts],
     Contracts2 = [erl_types:t_subst(Contract, Map)
@@ -351,7 +352,7 @@ process_contracts([], _Args, AccRange) ->
 
 process_contract(ContractPairs, CallTypes0) ->
   {{OrigContract, OrigConstraints},
-   {Contract, Constraints}} = ContractPairs,
+   {Contract, Constraints}} = from_contract_pairs(ContractPairs),
   CallTypesFun = erl_types:t_fun(CallTypes0, erl_types:t_any()),
   ContArgsFun = erl_types:t_fun(erl_types:t_fun_args(Contract),
 				erl_types:t_any()),
@@ -624,7 +625,9 @@ contract_from_form([{type, _, 'fun', [_, _]} = Form | Left], MFA,
                                                    Line, Msg]),
 	      throw({error, NewMsg})
 	  end,
-	{{{NewType, []}, {NewType, []}}, NewCache}
+        Pair = {NewType, []},
+        Pairs = to_contract_pairs(Pair, Pair),
+        {Pairs, NewCache}
     end,
   NewTypeAcc = [TypeFun | TypeAcc],
   NewFormAcc = [{Form, []} | FormAcc],
@@ -646,7 +649,8 @@ contract_from_form([{type, _L1, bounded_fun,
         {NewType, NewCache} =
           from_form_with_check(Form, ExpTypes, MFA, AllRecords,
                                VarTab, Cache4),
-	{{{OrigType, OrigConstr}, {NewType, Constr1}}, NewCache}
+        Pairs = to_contract_pairs({OrigType, OrigConstr}, {NewType, Constr1}),
+	{Pairs, NewCache}
     end,
   NewTypeAcc = [TypeFun | TypeAcc],
   NewFormAcc = [{Form, Constr} | FormAcc],
@@ -729,6 +733,19 @@ constraints_to_subs([C|Rest], MFA, ExpTypes, AllRecords,
   constraints_to_subs(Rest, MFA, ExpTypes, AllRecords,
                       VarTab, NewCache, NewAcc).
 
+%% Save some space in the PLT.
+from_contract_pairs({pairs, Original, Substituted}) ->
+  {Original, Substituted};
+from_contract_pairs({pair, Pair}) ->
+  {Pair, Pair}.
+
+to_contract_pairs(Pair, Pair) ->
+io:format("pairs 1\n"),
+  {pair, Pair};
+to_contract_pairs(Original, Substituted) ->
+io:format("pairs 2\n"),
+  {pairs, Original, Substituted}.
+
 %% Replaces variables with '_' when necessary to break up cycles among
 %% the constraints.
 
@@ -806,7 +823,8 @@ remove_use(T, _V) -> T.
 general_domain(List) ->
   general_domain(List, erl_types:t_none()).
 
-general_domain([{{_OrigSig, _OrigCs}, {Sig, Constraints}}|Left], AccSig) ->
+general_domain([Pairs|Left], AccSig) ->
+  {{_OrigSig, _OrigCs}, {Sig, Constraints}} = from_contract_pairs(Pairs),
   Map = insert_constraints(Constraints),
   Sig1 = erl_types:t_subst(Sig, Map),
   general_domain(Left, erl_types:t_sup(AccSig, Sig1));
@@ -885,7 +903,7 @@ io:format("hm 3 ~p~n", [T2 - T1]),
 	    CSig0 = get_contract_signature(Contract),
 	    CSig = erl_types:subst_all_vars_to_any(CSig0),
 {T11, _} = statistics(runtime),
-io:format("hm 3 ~p~n", [T11 - T2]),
+io:format("hm 31 ~p~n", [T11 - T2]),
 	    case erl_bif_types:is_known(M, F, A) of
 	      true ->
 		%% This is strictly for contracts of functions also in

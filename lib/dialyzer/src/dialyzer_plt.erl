@@ -535,10 +535,10 @@ Mem = ets:info(ETSContracts, memory),
   ets:delete(ETSContracts),
   ets:delete(ETSInfo),
 {T1, _} = statistics(runtime),
-io:format("restore ~w ~p (~w)~n", [length(Contracts), T1 - T0, Mem]),
-io:format("<contracts>~n"),
-[io:format("Contract ~w: ~s\n", [Mfa, dialyzer_contracts:contract_to_string(C)]) || {Mfa,C} <- lists:sort(dict:to_list(Contracts))],
-io:format("</contracts>~n"),
+io:format("restore ~w ~p (~w)~n", [length(dict:to_list(Contracts)), T1 - T0, Mem]),
+%% io:format("<contracts>~n"),
+%% [io:format("Contract ~w: ~s\n", [Mfa, dialyzer_contracts:contract_to_string(C)]) || {Mfa,C} <- lists:sort(dict:to_list(Contracts))],
+%% io:format("</contracts>~n"),
   Plt#plt{info = Info, contracts = Contracts};
 restore_full_plt(undefined, undefined) ->
   undefined.
