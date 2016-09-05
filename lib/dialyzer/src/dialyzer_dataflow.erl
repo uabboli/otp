@@ -227,7 +227,7 @@ analyze_loop(State) ->
                     state__renew_race_list([], 0, NewState2);
 		  false -> NewState1
                 end,
-	      {NewState4, _Map2, BodyType} =
+	      {NewState4, _Map2, BodyType, _} =
 		traverse(Body, Map1, NewState3),
 	      ?debug("Done analyzing: ~w:~s\n",
 		     [NewState1#state.curr_fun,
@@ -246,6 +246,11 @@ analyze_loop(State) ->
       end
   end.
 
+-type check_return_type() :: 'ignore_type' | 'check_type'.
+
+-spec traverse(cerl:cerl(), _, state()) ->
+                  {state(), _, type(), check_return_type()}.
+
 traverse(Tree, Map, State) ->
   ?debug("Handling ~p\n", [cerl:type(Tree)]),
   %% debug_pp_map(Map),
@@ -259,7 +264,7 @@ traverse(Tree, Map, State) ->
     binary ->
       Segs = cerl:binary_segments(Tree),
       {State1, Map1, SegTypes} = traverse_list(Segs, Map, State),
-      {State1, Map1, t_bitstr_concat(SegTypes)};
+      {State1, Map1, t_bitstr_concat(SegTypes), check_type};
     bitstr ->
       handle_bitstr(Tree, Map, State);
     call ->
@@ -267,18 +272,18 @@ traverse(Tree, Map, State) ->
     'case' ->
       handle_case(Tree, Map, State);
     'catch' ->
-      {State1, _Map1, _} = traverse(cerl:catch_body(Tree), Map, State),
-      {State1, Map, t_any()};
+      {State1, _Map1, _, Check} = traverse(cerl:catch_body(Tree), Map, State),
+      {State1, Map, t_any(), Check};
     cons ->
       handle_cons(Tree, Map, State);
     'fun' ->
       Type = state__fun_type(Tree, State),
       case state__warning_mode(State) of
-        true -> {State, Map, Type};
+        true -> {State, Map, Type, check_type};
         false ->
           State2 = state__add_work(get_label(Tree), State),
           State3 = state__update_fun_env(Tree, Map, State2),
-          {State3, Map, Type}
+          {State3, Map, Type, check_type}
       end;
     'let' ->
       handle_let(Tree, Map, State);
@@ -288,7 +293,7 @@ traverse(Tree, Map, State) ->
       %% By not including the variables in scope we can assure that we
       %% will get the current function type when using the variables.
       FoldFun = fun({Var, Fun}, {AccState, AccMap}) ->
-		    {NewAccState, NewAccMap0, FunType} =
+		    {NewAccState, NewAccMap0, FunType, _} =
 		      traverse(Fun, AccMap, AccState),
 		    NewAccMap = enter_type(Var, FunType, NewAccMap0),
 		    {NewAccState, NewAccMap}
@@ -297,7 +302,7 @@ traverse(Tree, Map, State) ->
       traverse(Body, Map1, State1);
     literal ->
       Type = literal_type(Tree),
-      {State, Map, Type};
+      {State, Map, Type, check_type};
     module ->
       handle_module(Tree, Map, State);
     primop ->
@@ -308,16 +313,16 @@ traverse(Tree, Map, State) ->
 	  bs_init_writable -> t_from_term(<<>>);
 	  Other -> erlang:error({'Unsupported primop', Other})
 	end,
-      {State, Map, Type};
+      {State, Map, Type, check_type};
     'receive' ->
       handle_receive(Tree, Map, State);
     seq ->
       Arg = cerl:seq_arg(Tree),
       Body = cerl:seq_body(Tree),
-      {State1, Map1, ArgType} = SMA = traverse(Arg, Map, State),
+      {State1, Map1, ArgType, _CheckType} = SMAC = traverse(Arg, Map, State),
       case t_is_none_or_unit(ArgType) of
 	true ->
-	  SMA;
+	  SMAC;
 	false ->
 	  State2 =
 	    case
@@ -345,14 +350,14 @@ traverse(Tree, Map, State) ->
       Elements = cerl:values_es(Tree),
       {State1, Map1, EsType} = traverse_list(Elements, Map, State),
       Type = t_product(EsType),
-      {State1, Map1, Type};
+      {State1, Map1, Type, check_type};
     var ->
       ?debug("Looking up unknown variable: ~p\n", [Tree]),
       case state__lookup_type_for_letrec(Tree, State) of
 	error ->
 	  LType = lookup_type(Tree, Map),
-          {State, Map, LType};
-	{ok, Type} -> {State, Map, Type}
+          {State, Map, LType, check_type};
+	{ok, Type} -> {State, Map, Type, check_type}
       end;
     Other ->
       erlang:error({'Unsupported type', Other})
@@ -362,7 +367,7 @@ traverse_list(Trees, Map, State) ->
   traverse_list(Trees, Map, State, []).
 
 traverse_list([Tree|Tail], Map, State, Acc) ->
-  {State1, Map1, Type} = traverse(Tree, Map, State),
+  {State1, Map1, Type, _} = traverse(Tree, Map, State),
   traverse_list(Tail, Map1, State1, [Type|Acc]);
 traverse_list([], Map, State, Acc) ->
   {State, Map, lists:reverse(Acc)}.
@@ -376,10 +381,10 @@ handle_apply(Tree, Map, State) ->
   Args = cerl:apply_args(Tree),
   Op = cerl:apply_op(Tree),
   {State0, Map1, ArgTypes} = traverse_list(Args, Map, State),
-  {State1, Map2, OpType} = traverse(Op, Map1, State0),
+  {State1, Map2, OpType, _} = traverse(Op, Map1, State0),
   case any_none(ArgTypes) of
     true ->
-      {State1, Map2, t_none()};
+      {State1, Map2, t_none(), check_type};
     false ->
       FunList =
 	case state__lookup_call_site(Tree, State) of
@@ -401,7 +406,7 @@ handle_apply(Tree, Map, State) ->
 		     [format_cerl(Op), format_type(OpType, State2), Arity]},
 	      State3 = state__add_warning(State2, ?WARN_FAILING_CALL,
 					  Tree, Msg),
-	      {State3, Map2, t_none()};
+	      {State3, Map2, t_none(), check_type};
 	    false ->
 	      NewArgs = t_inf_lists(ArgTypes,
                                     t_fun_args(OpType1, 'universe')),
@@ -412,7 +417,7 @@ handle_apply(Tree, Map, State) ->
 			  format_type(OpType, State)]},
 		  State3 = state__add_warning(State2, ?WARN_FAILING_CALL,
 					      Tree, Msg),
-		  {State3, enter_type(Op, OpType1, Map2), t_none()};
+		  {State3, enter_type(Op, OpType1, Map2), t_none(), check_type};
 		false ->
 		  Map3 = enter_type_lists(Args, NewArgs, Map2),
 		  Range0 = t_fun_range(OpType1, 'universe'),
@@ -421,10 +426,11 @@ handle_apply(Tree, Map, State) ->
 		      true  -> t_none();
 		      false -> Range0
 		    end,
-		  {State2, enter_type(Op, OpType1, Map3), Range}
+		  {State2, enter_type(Op, OpType1, Map3), Range, check_type}
 	      end
 	  end;
-	Normal -> Normal
+        {State3, Map3, Type3} ->
+          {State3, Map3, Type3, check_type}
       end
   end.
 
@@ -816,8 +822,8 @@ handle_bitstr(Tree, Map, State) ->
   Size = cerl:bitstr_size(Tree),
   Val = cerl:bitstr_val(Tree),
   BitstrType = cerl:concrete(cerl:bitstr_type(Tree)),
-  {State1, Map1, SizeType0} = traverse(Size, Map, State),
-  {State2, Map2, ValType0} = traverse(Val, Map1, State1),
+  {State1, Map1, SizeType0, _} = traverse(Size, Map, State),
+  {State2, Map2, ValType0, _} = traverse(Val, Map1, State1),
   case cerl:bitstr_bitsize(Tree) of
     BitSz when BitSz =:= all orelse BitSz =:= utf ->
       ValType =
@@ -836,9 +842,9 @@ handle_bitstr(Tree, Map, State) ->
 				    format_cerl(Val), format_cerl(Tree),
 				    format_type(ValType0, State2)]},
 	  State3 = state__add_warning(State2, ?WARN_BIN_CONSTRUCTION, Val, Msg),
-	  {State3, Map3, t_none()};
+	  {State3, Map3, t_none(), check_type};
 	false ->
-	  {State2, Map3, t_bitstr()}
+	  {State2, Map3, t_bitstr(), check_type}
       end;
     BitSz when is_integer(BitSz) orelse BitSz =:= any ->
       SizeType = t_inf(SizeType0, t_non_neg_integer()),
@@ -865,7 +871,7 @@ handle_bitstr(Tree, Map, State) ->
 	    end,
 	  State3 = state__add_warning(State2, ?WARN_BIN_CONSTRUCTION,
 				      Offending, Msg),
-	  {State3, Map2, t_none()};
+	  {State3, Map2, t_none(), check_type};
 	false ->
 	  UnitVal = cerl:concrete(cerl:bitstr_unit(Tree)),
           Opaques = State2#state.opaques,
@@ -888,7 +894,7 @@ handle_bitstr(Tree, Map, State) ->
             end,
 	  Map3 = enter_type_lists([Val, Size, Tree],
 				  [ValType, SizeType, Type], Map2),
-	  {State3, Map3, Type}
+	  {State3, Map3, Type, check_type}
       end
   end.
 
@@ -942,7 +948,7 @@ handle_call(Tree, Map, State) ->
             end;
           true -> State1
 	end,
-      {State2, Map2, t_none()};
+      {State2, Map2, t_none(), check_type};
     false ->
       case t_is_atom(MType) of
 	true ->
@@ -951,12 +957,14 @@ handle_call(Tree, Map, State) ->
 	    {[MAtom], [FAtom]} ->
 	      FunInfo = [{remote, state__fun_info({MAtom, FAtom, length(Args)},
 						  State1)}],
-	      handle_apply_or_call(FunInfo, Args, As, Map2, Tree, State1);
+	      {State2, Map3, Type} =
+                handle_apply_or_call(FunInfo, Args, As, Map2, Tree, State1),
+              {State2, Map3, Type, check_type};
 	    {_MAtoms, _FAtoms} ->
-	      {State1, Map2, t_any()}
+	      {State1, Map2, t_any(), check_type}
 	  end;
 	false ->
-	  {State1, Map2, t_any()}
+	  {State1, Map2, t_any(), check_type}
       end
   end.
 
@@ -965,9 +973,9 @@ handle_call(Tree, Map, State) ->
 handle_case(Tree, Map, State) ->
   Arg = cerl:case_arg(Tree),
   Clauses = filter_match_fail(cerl:case_clauses(Tree)),
-  {State1, Map1, ArgType} = SMA = traverse(Arg, Map, State),
+  {State1, Map1, ArgType, _} = SMAC = traverse(Arg, Map, State),
   case t_is_none_or_unit(ArgType) of
-    true -> SMA;
+    true -> SMAC;
     false ->
       State2 =
         case is_race_analysis_enabled(State) of
@@ -978,9 +986,8 @@ handle_case(Tree, Map, State) ->
           false -> State1
         end,
       Map2 = join_maps_begin(Map1),
-      {MapList, State3, Type, Warns} =
-	handle_clauses(Clauses, Arg, ArgType, ArgType, State2,
-		       [], Map2, [], [], []),
+      {MapList, State3, Type, CheckType, Warns} =
+	handle_clauses(Clauses, Arg, ArgType, State2, Map2),
       %% Non-Erlang BEAM languages, such as Elixir, expand language constructs
       %% into case statements. In that case, we do not want to warn on
       %% individual clauses not matching unless none of them can.
@@ -992,7 +999,7 @@ handle_case(Tree, Map, State) ->
 			   end, State3, Warns),
       Map3 = join_maps_end(MapList, Map2),
       debug_pp_map(Map3),
-      {State4, Map3, Type}
+      {State4, Map3, Type, CheckType}
   end.
 
 %%----------------------------------------
@@ -1000,8 +1007,8 @@ handle_case(Tree, Map, State) ->
 handle_cons(Tree, Map, State) ->
   Hd = cerl:cons_hd(Tree),
   Tl = cerl:cons_tl(Tree),
-  {State1, Map1, HdType} = traverse(Hd, Map, State),
-  {State2, Map2, TlType} = traverse(Tl, Map1, State1),
+  {State1, Map1, HdType, _} = traverse(Hd, Map, State),
+  {State2, Map2, TlType, _} = traverse(Tl, Map1, State1),
   State3 =
     case t_is_none(t_inf(TlType, t_list(), State2#state.opaques)) of
       true ->
@@ -1011,7 +1018,7 @@ handle_cons(Tree, Map, State) ->
 	State2
     end,
   Type = t_cons(HdType, TlType),
-  {State3, Map2, Type}.
+  {State3, Map2, Type, check_type}.
 
 %%----------------------------------------
 
@@ -1035,7 +1042,7 @@ handle_let(Tree, Map, State) ->
       false -> {Map, State}
     end,
   Body = cerl:let_body(Tree),
-  {State1, Map1, ArgTypes} = SMA = traverse(Arg, Map0, State0),
+  {State1, Map1, ArgTypes, _} = traverse(Arg, Map0, State0),
   State2 =
     case IsRaceAnalysisEnabled andalso cerl:is_c_call(Arg) of
       true ->
@@ -1051,10 +1058,12 @@ handle_let(Tree, Map, State) ->
       false -> State1
     end,
   case t_is_none_or_unit(ArgTypes) of
-    true -> SMA;
+    true ->
+      {State1, Map1, ArgTypes, check_type};
     false ->
       Map2 = enter_type_lists(Vars, t_to_tlist(ArgTypes), Map1),
-      traverse(Body, Map2, State2)
+      {State3, Map3, BodyType, CheckType0} = traverse(Body, Map2, State2),
+      {State3, Map3, BodyType, CheckType0}
   end.
 
 %%----------------------------------------
@@ -1068,7 +1077,7 @@ handle_module(Tree, Map, State) ->
 	    end,
   {Defs1, Defs2} = lists:partition(PartFun, Defs),
   Letrec = cerl:c_letrec(Defs1, cerl:c_int(42)),
-  {State1, Map1, _FunTypes} = traverse(Letrec, Map, State),
+  {State1, Map1, _FunTypes, _} = traverse(Letrec, Map, State),
   %% Also add environments for the other top-level functions.
   VarTypes = [{Var, state__fun_type(Fun, State1)} || {Var, Fun} <- Defs],
   EnvMap = enter_type_list(VarTypes, Map),
@@ -1076,7 +1085,7 @@ handle_module(Tree, Map, State) ->
 		state__update_fun_env(Fun, EnvMap, AccState)
 	    end,
   State2 = lists:foldl(FoldFun, State1, Defs2),
-  {State2, Map1, t_any()}.
+  {State2, Map1, t_any(), check_type}.
 
 %%----------------------------------------
 
@@ -1091,24 +1100,24 @@ handle_receive(Tree, Map, State) ->
                                RaceListSize + 1, State);
       false -> State
     end,
-  {MapList, State2, ReceiveType, Warns} =
-    handle_clauses(Clauses, ?no_arg, t_any(), t_any(), State1, [], Map,
-		   [], [], []),
+  {MapList, State2, ReceiveType, CheckType0, Warns} =
+    handle_clauses(Clauses, ?no_arg, t_any(), State1, Map),
   State3 = lists:foldl(fun({T,R,M,F}, S) -> state__add_warning(S,T,R,M,F) end,
 		       State2, Warns),
   Map1 = join_maps(MapList, Map),
-  {State4, Map2, TimeoutType} = traverse(Timeout, Map1, State3),
+  {State4, Map2, TimeoutType, _} = traverse(Timeout, Map1, State3),
   Opaques = State4#state.opaques,
   case (t_is_atom(TimeoutType, Opaques) andalso
 	(t_atom_vals(TimeoutType, Opaques) =:= ['infinity'])) of
     true ->
-      {State4, Map2, ReceiveType};
+      {State4, Map2, ReceiveType, CheckType0};
     false ->
       Action = cerl:receive_action(Tree),
-      {State5, Map3, ActionType} = traverse(Action, Map, State4),
+      {State5, Map3, ActionType, _ActionCheckType} =
+        traverse(Action, Map, State4),
       Map4 = join_maps([Map3, Map1], Map),
       Type = t_sup(ReceiveType, ActionType),
-      {State5, Map4, Type}
+      {State5, Map4, Type, check_type}
   end.
 
 %%----------------------------------------
@@ -1119,12 +1128,12 @@ handle_try(Tree, Map, State) ->
   Vars = cerl:try_vars(Tree),
   Body = cerl:try_body(Tree),
   Handler = cerl:try_handler(Tree),
-  {State1, Map1, ArgType} = traverse(Arg, Map, State),
+  {State1, Map1, ArgType, _} = traverse(Arg, Map, State),
   Map2 = mark_as_fresh(Vars, Map1),
-  {SuccState, SuccMap, SuccType} =
+  {SuccState, SuccMap, SuccType, _SuccCheckType} =
     case bind_pat_vars(Vars, t_to_tlist(ArgType), [], Map2, State1) of
       {error, _, _, _, _} ->
-	{State1, map__new(), t_none()};
+	{State1, map__new(), t_none(), check_type};
       {SuccMap1, VarTypes} ->
 	%% Try to bind the argument. Will only succeed if
 	%% it is a simple structured term.
@@ -1137,20 +1146,21 @@ handle_try(Tree, Map, State) ->
 	traverse(Body, SuccMap2, State1)
     end,
   ExcMap1 = mark_as_fresh(EVars, Map),
-  {State2, ExcMap2, HandlerType} = traverse(Handler, ExcMap1, SuccState),
+  {State2, ExcMap2, HandlerType, _HandlerCheckType} =
+    traverse(Handler, ExcMap1, SuccState),
   TryType = t_sup(SuccType, HandlerType),
-  {State2, join_maps([ExcMap2, SuccMap], Map1), TryType}.
+  {State2, join_maps([ExcMap2, SuccMap], Map1), TryType, check_type}.
 
 %%----------------------------------------
 
 handle_map(Tree,Map,State) ->
   Pairs = cerl:map_es(Tree),
   Arg = cerl:map_arg(Tree),
-  {State1, Map1, ArgType} = traverse(Arg, Map, State),
+  {State1, Map1, ArgType, _} = traverse(Arg, Map, State),
   ArgType1 = t_inf(t_map(), ArgType),
   case t_is_none_or_unit(ArgType1) of
     true ->
-      {State1, Map1, ArgType1};
+      {State1, Map1, ArgType1, check_type};
     false ->
       {State2, Map2, TypePairs, ExactKeys} =
 	traverse_map_pairs(Pairs, Map1, State1, t_none(), [], []),
@@ -1165,14 +1175,14 @@ handle_map(Tree,Map,State) ->
       of ResT ->
 	  BindT = t_map([{K, t_any()} || K <- ExactKeys]),
 	  case bind_pat_vars_reverse([Arg], [BindT], [], Map2, State2) of
-	    {error, _, _, _, _} -> {State2, Map2, ResT};
-	    {Map3, _} ->           {State2, Map3, ResT}
+	    {error, _, _, _, _} -> {State2, Map2, ResT, check_type};
+	    {Map3, _} ->           {State2, Map3, ResT, check_type}
 	  end
       catch {none, MapType, {K,_}, KVTree} ->
 	  Msg2 = {map_update, [format_type(MapType, State2),
 			       format_type(K, State2)]},
 	  {state__add_warning(State2, ?WARN_MAP_CONSTRUCTION, KVTree, Msg2),
-	   Map2, t_none()}
+	   Map2, t_none(), check_type}
       end
   end.
 
@@ -1201,7 +1211,7 @@ handle_tuple(Tree, Map, State) ->
   TupleType = t_tuple(EsType),
   case t_is_none(TupleType) of
     true ->
-      {State1, Map1, t_none()};
+      {State1, Map1, t_none(), check_type};
     false ->
       %% Let's find out if this is a record
       case Elements of
@@ -1220,7 +1230,7 @@ handle_tuple(Tree, Map, State) ->
                       Msg = {record_constr, [RecC, FieldDiffs]},
                       State2 = state__add_warning(State1, ?WARN_MATCHING,
                                                   Tree, Msg),
-                      {State2, Map1, t_none()};
+                      {State2, Map1, t_none(), check_type};
                     false ->
                       case bind_pat_vars(Elements, t_tuple_args(RecType),
                                          [], Map1, State1) of
@@ -1230,7 +1240,7 @@ handle_tuple(Tree, Map, State) ->
                                   format_type(ErrorType, State1)]},
                           State2 = state__add_warning(State1, ?WARN_MATCHING,
                                                       Tree, Msg),
-                          {State2, Map1, t_none()};
+                          {State2, Map1, t_none(), check_type};
                         {error, opaque, ErrorPat, ErrorType, OpaqueType} ->
                           Msg = {opaque_match,
                                  [format_patterns(ErrorPat),
@@ -1238,25 +1248,30 @@ handle_tuple(Tree, Map, State) ->
                                   format_type(OpaqueType, State1)]},
                           State2 = state__add_warning(State1, ?WARN_OPAQUE,
                                                       Tree, Msg),
-                          {State2, Map1, t_none()};
+                          {State2, Map1, t_none(), check_type};
                         {Map2, ETypes} ->
-                          {State1, Map2, t_tuple(ETypes)}
+                          {State1, Map2, t_tuple(ETypes), check_type}
                       end
                   end
 	      end;
 	    false ->
-	      {State1, Map1, t_tuple(EsType)}
+	      {State1, Map1, t_tuple(EsType), check_type}
 	  end;
 	[] ->
-	  {State1, Map1, t_tuple([])}
+	  {State1, Map1, t_tuple([]), check_type}
       end
   end.
 
 %%----------------------------------------
 %% Clauses
 %%
+
+handle_clauses(Clauses, Arg, ArgType, State, Map) ->
+    handle_clauses(Clauses, Arg, ArgType, ArgType, State, [], Map,
+                   [], [], [], []).
+
 handle_clauses([C|Left], Arg, ArgType, OrigArgType, State, CaseTypes, MapIn,
-	       Acc, ClauseAcc, WarnAcc0) ->
+	       Acc, ClauseAcc, CheckTypes, WarnAcc0) ->
   IsRaceAnalysisEnabled = is_race_analysis_enabled(State),
   State1 =
     case IsRaceAnalysisEnabled of
@@ -1269,7 +1284,7 @@ handle_clauses([C|Left], Arg, ArgType, OrigArgType, State, CaseTypes, MapIn,
           State);
       false -> State
     end,
-  {State2, ClauseMap, BodyType, NewArgType, WarnAcc} =
+  {State2, ClauseMap, BodyType, NewArgType, CheckType, WarnAcc} =
     do_clause(C, Arg, ArgType, OrigArgType, MapIn, State1, WarnAcc0),
   {NewClauseAcc, State3} =
     case IsRaceAnalysisEnabled of
@@ -1282,15 +1297,15 @@ handle_clauses([C|Left], Arg, ArgType, OrigArgType, State, CaseTypes, MapIn,
                                 RaceListSize1 + 1, State2)};
       false -> {ClauseAcc, State2}
     end,
-  {NewCaseTypes, NewAcc} =
+  {NewCaseTypes, NewAcc, NewCheckTypes} =
     case t_is_none(BodyType) of
-      true -> {CaseTypes, Acc};
-      false -> {[BodyType|CaseTypes], [ClauseMap|Acc]}
+      true -> {CaseTypes, Acc,CheckTypes};
+      false -> {[BodyType|CaseTypes], [ClauseMap|Acc], [CheckType|CheckTypes]}
     end,
-  handle_clauses(Left, Arg, NewArgType, OrigArgType, State3,
-		 NewCaseTypes, MapIn, NewAcc, NewClauseAcc, WarnAcc);
-handle_clauses([], _Arg, _ArgType, _OrigArgType, State, CaseTypes, _MapIn, Acc,
-	       ClauseAcc, WarnAcc) ->
+  handle_clauses(Left, Arg, NewArgType, OrigArgType, State3, NewCaseTypes,
+                 MapIn, NewAcc, NewClauseAcc, NewCheckTypes, WarnAcc);
+handle_clauses([], _Arg, _ArgType, _OrigArgType, State, CaseTypes, _MapIn,
+               Acc, ClauseAcc, _CheckTypes, WarnAcc) ->
   State1 =
     case is_race_analysis_enabled(State) of
       true ->
@@ -1300,7 +1315,7 @@ handle_clauses([], _Arg, _ArgType, _OrigArgType, State, CaseTypes, _MapIn, Acc,
 	  RaceListSize + 1, State);
       false -> State
     end,
-  {lists:reverse(Acc), State1, t_sup(CaseTypes), WarnAcc}.
+  {lists:reverse(Acc), State1, t_sup(CaseTypes), check_type, WarnAcc}.
 
 do_clause(C, Arg, ArgType0, OrigArgType, Map, State, Warns) ->
   Pats = cerl:clause_pats(C),
@@ -1334,7 +1349,7 @@ do_clause(C, Arg, ArgType0, OrigArgType, Map, State, Warns) ->
 	     [cerl_prettypr:format(C), format_type(ArgType0, State1)]),
       case state__warning_mode(State1) of
         false ->
-	  {State1, Map, t_none(), ArgType0, Warns};
+	  {State1, Map, t_none(), ArgType0, check_type, Warns};
 	true ->
 	  {Msg, Force} =
 	    case t_is_none(ArgType0) of
@@ -1414,7 +1429,8 @@ do_clause(C, Arg, ArgType0, OrigArgType, Map, State, Warns) ->
 		       {record_match, _} -> ?WARN_MATCHING;
 		       {pattern_match_cov, _} -> ?WARN_MATCHING
 		     end,
-	  {State1, Map, t_none(), ArgType0, [{WarnType, C, Msg, Force}|Warns]}
+	  {State1, Map, t_none(), ArgType0, check_type,
+           [{WarnType, C, Msg, Force}|Warns]}
       end;
     {Map2, PatTypes} ->
       Map3 =
@@ -1463,10 +1479,11 @@ do_clause(C, Arg, ArgType0, OrigArgType, Map, State, Warns) ->
 		    {?WARN_MATCHING, C, Msg, false}
 		end
 	    end,
-	  {State1, Map, t_none(), NewArgType, [Warn|Warns]};
+	  {State1, Map, t_none(), NewArgType, check_type, [Warn|Warns]};
         Map4 ->
-          {RetState, RetMap, BodyType} = traverse(Body, Map4, State1),
-          {RetState, RetMap, BodyType, NewArgType, Warns}
+          {RetState, RetMap, BodyType, CheckType0} =
+            traverse(Body, Map4, State1),
+          {RetState, RetMap, BodyType, NewArgType, CheckType0, Warns}
       end
   end.
 
