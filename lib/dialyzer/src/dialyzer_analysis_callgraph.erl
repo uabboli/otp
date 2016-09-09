@@ -59,7 +59,8 @@
 	  start_from     = byte_code    :: start_from(),
 	  use_contracts  = true         :: boolean(),
 	  timing_server                 :: dialyzer_timing:timing_server(),
-          solvers                       :: [solver()]
+          solvers                       :: [solver()],
+          opaque_types                  :: boolean()
 	 }).
 
 -record(server_state,
@@ -135,7 +136,8 @@ analysis_start(Parent, Analysis, LegalWarnings) ->
 			  start_from = Analysis#analysis.start_from,
 			  use_contracts = Analysis#analysis.use_contracts,
 			  timing_server = Analysis#analysis.timing_server,
-                          solvers = Analysis#analysis.solvers
+                          solvers = Analysis#analysis.solvers,
+                          opaque_types = Analysis#analysis.opaque_types
 			 },
   Files = ordsets:from_list(Analysis#analysis.files),
   {Callgraph, TmpCServer0} = compile_and_store(Files, State),
@@ -145,6 +147,10 @@ analysis_start(Parent, Analysis, LegalWarnings) ->
       NewRecords = dialyzer_codeserver:get_temp_records(TmpCServer0),
       NewExpTypes = dialyzer_codeserver:get_temp_exported_types(TmpCServer0),
       OldRecords = dialyzer_plt:get_types(Plt),
+      case State#analysis_state.opaque_types of
+        true -> ok;
+        false -> dialyzer_utils:check_opaque(OldRecords)
+      end,
       OldExpTypes0 = dialyzer_plt:get_exported_types(Plt),
       MergedRecords = dialyzer_utils:merge_records(NewRecords, OldRecords),
       RemMods =
@@ -225,7 +231,8 @@ analyze_callgraph(Callgraph, #analysis_state{codeserver = Codeserver,
 	  include_dirs  = []        :: [file:filename()],
 	  start_from    = byte_code :: start_from(),
 	  use_contracts = true      :: boolean(),
-          legal_warnings            :: [dial_warn_tag()]
+          legal_warnings            :: [dial_warn_tag()],
+          opaque_types              :: boolean()
 	 }).
 
 make_compile_init(#analysis_state{codeserver = Codeserver,
@@ -233,14 +240,17 @@ make_compile_init(#analysis_state{codeserver = Codeserver,
 				  include_dirs = Dirs,
 				  use_contracts = UseContracts,
                                   legal_warnings = LegalWarnings,
-				  start_from = StartFrom}, Callgraph) ->
+				  start_from = StartFrom,
+                                  opaque_types = OpaqueTypes},
+                  Callgraph) ->
   #compile_init{callgraph = Callgraph,
 		codeserver = Codeserver,
 		defines = [{d, Macro, Val} || {Macro, Val} <- Defs],
 		include_dirs = [{i, D} || D <- Dirs],
 		use_contracts = UseContracts,
                 legal_warnings = LegalWarnings,
-		start_from = StartFrom}.
+		start_from = StartFrom,
+                opaque_types  = OpaqueTypes}.
 
 compile_and_store(Files, #analysis_state{codeserver = CServer,
 					 timing_server = Timing,
@@ -322,13 +332,15 @@ start_compilation(File,
 				defines = Defines, include_dirs = IncludeD,
 				use_contracts = UseContracts,
                                 legal_warnings = LegalWarnings,
-				start_from = StartFrom}) ->
+				start_from = StartFrom,
+                                opaque_types = OpaqueTypes}) ->
   case StartFrom of
     src_code ->
       compile_src(File, IncludeD, Defines, Callgraph, Codeserver,
-                  UseContracts, LegalWarnings);
+                  UseContracts, OpaqueTypes, LegalWarnings);
     byte_code ->
-      compile_byte(File, Callgraph, Codeserver, UseContracts, LegalWarnings)
+      compile_byte(File, Callgraph, Codeserver, UseContracts,
+                   OpaqueTypes, LegalWarnings)
   end.
 
 cleanup_callgraph(#analysis_state{plt = InitPlt, parent = Parent,
@@ -363,7 +375,7 @@ cleanup_callgraph(#analysis_state{plt = InitPlt, parent = Parent,
   Callgraph1.
 
 compile_src(File, Includes, Defines, Callgraph, CServer, UseContracts,
-            LegalWarnings) ->
+            OpaqueTypes, LegalWarnings) ->
   DefaultIncludes = default_includes(filename:dirname(File)),
   SrcCompOpts = dialyzer_utils:src_compiler_opts(),
   CompOpts = SrcCompOpts ++ Includes ++ Defines ++ DefaultIncludes,
@@ -371,37 +383,38 @@ compile_src(File, Includes, Defines, Callgraph, CServer, UseContracts,
     {error, _Msg} = Error -> Error;
     {ok, AbstrCode} ->
       compile_common(File, AbstrCode, CompOpts, Callgraph, CServer,
-                     UseContracts, LegalWarnings)
+                     UseContracts, OpaqueTypes, LegalWarnings)
   end.
 
-compile_byte(File, Callgraph, CServer, UseContracts, LegalWarnings) ->
+compile_byte(File, Callgraph, CServer, UseContracts, OpaqueTypes,
+             LegalWarnings) ->
   case dialyzer_utils:get_abstract_code_from_beam(File) of
     error ->
       {error, "  Could not get abstract code for: " ++ File ++ "\n" ++
 	 "  Recompile with +debug_info or analyze starting from source code"};
     {ok, AbstrCode} ->
       compile_byte(File, AbstrCode, Callgraph, CServer, UseContracts,
-                   LegalWarnings)
+                   OpaqueTypes, LegalWarnings)
   end.
 
 compile_byte(File, AbstrCode, Callgraph, CServer, UseContracts,
-             LegalWarnings) ->
+             OpaqueTypes, LegalWarnings) ->
   case dialyzer_utils:get_compile_options_from_beam(File) of
     error ->
       {error, "  Could not get compile options for: " ++ File ++ "\n" ++
 	 "  Recompile or analyze starting from source code"};
     {ok, CompOpts} ->
       compile_common(File, AbstrCode, CompOpts, Callgraph, CServer,
-                     UseContracts, LegalWarnings)
+                     UseContracts, OpaqueTypes, LegalWarnings)
   end.
 
 compile_common(File, AbstrCode, CompOpts, Callgraph, CServer,
-               UseContracts, LegalWarnings) ->
+               UseContracts, OpaqueTypes, LegalWarnings) ->
   case dialyzer_utils:get_core_from_abstract_code(AbstrCode, CompOpts) of
     error -> {error, "  Could not get core Erlang code for: " ++ File};
     {ok, Core} ->
       Mod = cerl:concrete(cerl:module_name(Core)),
-      case dialyzer_utils:get_record_and_type_info(AbstrCode) of
+      case dialyzer_utils:get_record_and_type_info(AbstrCode, OpaqueTypes) of
 	{error, _} = Error -> Error;
 	{ok, RecInfo} ->
 	  CServer1 =

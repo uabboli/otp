@@ -39,11 +39,12 @@
 	 get_core_from_abstract_code/2,
 	 get_core_from_src/1,
 	 get_core_from_src/2,
-	 get_record_and_type_info/1,
+	 get_record_and_type_info/2,
 	 get_spec_info/3,
          get_fun_meta_info/3,
          is_suppressed_fun/2,
          is_suppressed_tag/3,
+         check_opaque/1,
 	 merge_records/2,
 	 pp_hook/0,
 	 process_record_remote_types/1,
@@ -197,73 +198,83 @@ get_core_from_abstract_code(AbstrCode, Opts) ->
 -type type_table() :: erl_types:type_table().
 -type mod_records()   :: dict:dict(module(), type_table()).
 
--spec get_record_and_type_info(abstract_code()) ->
+-spec get_record_and_type_info(abstract_code(), boolean()) ->
 	{'ok', type_table()} | {'error', string()}.
 
-get_record_and_type_info(AbstractCode) ->
+get_record_and_type_info(AbstractCode, OpaqueTypes) ->
   Module = get_module(AbstractCode),
-  get_record_and_type_info(AbstractCode, Module, dict:new()).
+  get_record_and_type_info(AbstractCode, OpaqueTypes, Module, dict:new()).
 
--spec get_record_and_type_info(abstract_code(), module(), type_table()) ->
+-spec get_record_and_type_info(abstract_code(), boolean(), module(),
+                               type_table()) ->
 	{'ok', type_table()} | {'error', string()}.
 
-get_record_and_type_info(AbstractCode, Module, RecDict) ->
-  get_record_and_type_info(AbstractCode, Module, RecDict, "nofile").
+get_record_and_type_info(AbstractCode, OpaqueTypes, Module, RecDict) ->
+  get_record_and_type_info(AbstractCode, OpaqueTypes, Module, RecDict,
+                           "nofile").
 
 get_record_and_type_info([{attribute, A, record, {Name, Fields0}}|Left],
-			 Module, RecDict, File) ->
+			 OpaqueTypes, Module, RecDict, File) ->
   {ok, Fields} = get_record_fields(Fields0, RecDict),
   Arity = length(Fields),
   FN = {File, erl_anno:line(A)},
   NewRecDict = dict:store({record, Name}, {FN, [{Arity,Fields}]}, RecDict),
-  get_record_and_type_info(Left, Module, NewRecDict, File);
+  get_record_and_type_info(Left, OpaqueTypes, Module, NewRecDict, File);
 get_record_and_type_info([{attribute, A, type, {{record, Name}, Fields0, []}}
-			  |Left], Module, RecDict, File) ->
+			  |Left], OpaqueTypes, Module, RecDict, File) ->
   %% This overrides the original record declaration.
   {ok, Fields} = get_record_fields(Fields0, RecDict),
   Arity = length(Fields),
   FN = {File, erl_anno:line(A)},
   NewRecDict = dict:store({record, Name}, {FN, [{Arity, Fields}]}, RecDict),
-  get_record_and_type_info(Left, Module, NewRecDict, File);
+  get_record_and_type_info(Left, OpaqueTypes, Module, NewRecDict, File);
 get_record_and_type_info([{attribute, A, Attr, {Name, TypeForm}}|Left],
-			 Module, RecDict, File)
+			 OpaqueTypes, Module, RecDict, File)
                when Attr =:= 'type'; Attr =:= 'opaque' ->
   FN = {File, erl_anno:line(A)},
-  try add_new_type(Attr, Name, TypeForm, [], Module, FN, RecDict) of
+  try
+    add_new_type(Attr, Name, TypeForm, [], OpaqueTypes, Module, FN, RecDict)
+  of
     NewRecDict ->
-      get_record_and_type_info(Left, Module, NewRecDict, File)
+      get_record_and_type_info(Left, OpaqueTypes, Module, NewRecDict, File)
   catch
     throw:{error, _} = Error -> Error
   end;
 get_record_and_type_info([{attribute, A, Attr, {Name, TypeForm, Args}}|Left],
-			 Module, RecDict, File)
+			 OpaqueTypes, Module, RecDict, File)
                when Attr =:= 'type'; Attr =:= 'opaque' ->
   FN = {File, erl_anno:line(A)},
-  try add_new_type(Attr, Name, TypeForm, Args, Module, FN, RecDict) of
+  try
+    add_new_type(Attr, Name, TypeForm, Args, OpaqueTypes, Module, FN, RecDict)
+  of
     NewRecDict ->
-      get_record_and_type_info(Left, Module, NewRecDict, File)
+      get_record_and_type_info(Left, OpaqueTypes, Module, NewRecDict, File)
   catch
     throw:{error, _} = Error -> Error
   end;
 get_record_and_type_info([{attribute, _, file, {IncludeFile, _}}|Left],
-                         Module, RecDict, _File) ->
-  get_record_and_type_info(Left, Module, RecDict, IncludeFile);
-get_record_and_type_info([_Other|Left], Module, RecDict, File) ->
-  get_record_and_type_info(Left, Module, RecDict, File);
-get_record_and_type_info([], _Module, RecDict, _File) ->
+                         OpaqueTypes, Module, RecDict, _File) ->
+  get_record_and_type_info(Left, OpaqueTypes, Module, RecDict, IncludeFile);
+get_record_and_type_info([_Other|Left], OpaqueTypes, Module, RecDict, File) ->
+  get_record_and_type_info(Left, OpaqueTypes, Module, RecDict, File);
+get_record_and_type_info([], _OpaqueTypes, _Module, RecDict, _File) ->
   {ok, RecDict}.
 
-add_new_type(TypeOrOpaque, Name, TypeForm, ArgForms, Module, FN,
+add_new_type(TypeOrOpaque, Name, TypeForm, ArgForms, OpaqueTypes, Module, FN,
              RecDict) ->
+  TypeTag = case OpaqueTypes of
+              true -> TypeOrOpaque;
+              false -> type
+            end,
   Arity = length(ArgForms),
-  case erl_types:type_is_defined(TypeOrOpaque, Name, Arity, RecDict) of
+  case erl_types:type_is_defined(TypeTag, Name, Arity, RecDict) of
     true ->
       Msg = flat_format("Type ~s/~w already defined\n", [Name, Arity]),
       throw({error, Msg});
     false ->
       try erl_types:t_var_names(ArgForms) of
         ArgNames ->
-	  dict:store({TypeOrOpaque, Name, Arity},
+	  dict:store({TypeTag, Name, Arity},
                      {{Module, FN, TypeForm, ArgNames},
                       erl_types:t_any()}, RecDict)
       catch
@@ -424,10 +435,42 @@ msg_with_position(Fun, FileLine) ->
       throw({error, NewMsg})
   end.
 
+-spec check_opaque(mod_records()) -> 'ok'.
+
+check_opaque(OldRecords) ->
+  Fun = fun({Module, OldElement}) ->
+            MFun = fun({{opaque, Name, NArgs}, _}) ->
+                       Fmt = "  Found opaque type ~w:~w/~w in the PLT; "
+                             "please create the PLT with --no_opaque_types\n",
+                       Msg = flat_format(Fmt, [Module, Name, NArgs]),
+                       exit({error, lists:flatten(Msg)});
+                      (_) -> ok
+                   end,
+            lists:foreach(MFun, dict:to_list(OldElement))
+        end,
+  lists:foreach(Fun, dict:to_list(OldRecords)).
+
+
 -spec merge_records(mod_records(), mod_records()) -> mod_records().
 
 merge_records(NewRecords, OldRecords) ->
-  dict:merge(fun(_Key, NewVal, _OldVal) -> NewVal end, NewRecords, OldRecords).
+  dict:merge(fun(Module, NewElement, OldElement) ->
+                 CFun = fun({{opaque, Name, NArgs}, _}) ->
+                            case dict:find({type, Name, NArgs}, OldElement) of
+                              {ok, _} ->
+                                Fmt = "  Found opaque type ~w:~w/~w; "
+                                      "please re-analyze with "
+                                      "--no_opaque_types\n",
+                                Msg = flat_format(Fmt, [Module, Name, NArgs]),
+                                exit({error, lists:flatten(Msg)});
+                              error -> ok
+                            end;
+                           (_) -> ok
+                        end,
+                 lists:foreach(CFun, dict:to_list(NewElement)),
+                 NewElement
+             end,
+             NewRecords, OldRecords).
 
 %% ============================================================================
 %%

@@ -2,7 +2,7 @@
 %%-----------------------------------------------------------------------
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2006-2015. All Rights Reserved.
+%% Copyright Ericsson AB 2006-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -206,6 +206,8 @@ build_options([{OptionName, Value} = Term|Rest], Options) ->
     solvers ->
       assert_solvers(Value),
       build_options(Rest, Options#options{solvers = Value});
+    no_opaque_types when is_boolean(Value) ->
+      build_options(Rest, Options#options{opaque_types = not Value});
     _ ->
       bad_option("Unknown dialyzer command line option", Term)
   end;

@@ -2,7 +2,7 @@
 %%-----------------------------------------------------------------------
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2006-2015. All Rights Reserved.
+%% Copyright Ericsson AB 2006-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -202,6 +202,9 @@ cl(["--gui"|T]) ->
 cl(["--solver", Solver|T]) -> % not documented
   append_var(dialyzer_solvers, [list_to_atom(Solver)]),
   cl(T);
+cl(["--no_opaque_types"|T]) -> % not documented
+  put(dialyzer_opaque_types, false),
+  cl(T);
 cl([H|_] = L) ->
   case filelib:is_file(H) orelse filelib:is_dir(H) of
     true ->
@@ -263,6 +266,7 @@ init() ->
   put(dialyzer_options_check_plt, DefaultOpts#options.check_plt),
   put(dialyzer_timing,            DefaultOpts#options.timing),
   put(dialyzer_solvers,           DefaultOpts#options.solvers),
+  put(dialyzer_opaque_types,      DefaultOpts#options.opaque_types),
   ok.
 
 append_defines([Def, Val]) ->
@@ -317,7 +321,8 @@ common_options() ->
    {use_spec, get(dialyzer_options_use_contracts)},
    {warnings, get(dialyzer_warnings)},
    {check_plt, get(dialyzer_options_check_plt)},
-   {solvers, get(dialyzer_solvers)}].
+   {solvers, get(dialyzer_solvers)},
+   {no_opaque_types, not get(dialyzer_opaque_types)}].
 
 %%-----------------------------------------------------------------------
 

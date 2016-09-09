@@ -58,6 +58,7 @@
 	 files      = []		 :: files(),   % absolute names
 	 plt        = none		 :: 'none' | file:filename(),
 	 no_spec    = false              :: boolean(),
+         opaque_types = true             :: boolean(),
 	 show_succ  = false              :: boolean(),
 	 %% For choosing between specs or edoc @spec comments
 	 edoc       = false		 :: boolean(),
@@ -616,6 +617,7 @@ cl(["--show-success-typings"|Opts]) -> {show_succ, Opts};
 cl(["--annotate"|Opts]) -> {{mode, ?ANNOTATE}, Opts};
 cl(["--annotate-inc-files"|Opts]) -> {{mode, ?ANNOTATE_INC_FILES}, Opts};
 cl(["--no_spec"|Opts]) -> {no_spec, Opts};
+cl(["--no_opaque_types"|Opts]) -> {no_opaque_types, Opts};
 cl(["--plt",Plt|Opts]) -> {{plt, Plt}, Opts};
 cl(["-D"++Def|Opts]) ->
   case Def of
@@ -686,6 +688,8 @@ analyze_result(show_succ, Args, Analysis) ->
   {Args, Analysis#analysis{show_succ = true}};
 analyze_result(no_spec, Args, Analysis) ->
   {Args, Analysis#analysis{no_spec = true}};
+analyze_result(no_opaque_types, Args, Analysis) ->
+  {Args, Analysis#analysis{opaque_types = false}};
 analyze_result({pa, Dir}, Args, Analysis) ->
   true = code:add_patha(Dir),
   {Args, Analysis};
@@ -842,6 +846,10 @@ collect_info(Analysis) ->
       NewRecords = dialyzer_codeserver:get_temp_records(TmpCServer),
       NewExpTypes = dialyzer_codeserver:get_temp_exported_types(TmpCServer),
       OldRecords = dialyzer_plt:get_types(NewPlt),
+      case NewAnalysis#analysis.opaque_types of
+        true -> ok;
+        false -> dialyzer_utils:check_opaque(OldRecords)
+      end,
       OldExpTypes = dialyzer_plt:get_exported_types(NewPlt),
       MergedRecords = dialyzer_utils:merge_records(NewRecords, OldRecords),
       MergedExpTypes = sets:union(NewExpTypes, OldExpTypes),
@@ -871,7 +879,10 @@ collect_one_file_info(File, Analysis) ->
       case dialyzer_utils:get_core_from_abstract_code(AbstractCode, Options) of
 	error -> compile_error(["Could not get core erlang for "++File]);
 	{ok, Core} ->
-	  case dialyzer_utils:get_record_and_type_info(AbstractCode) of
+          OpaqueTypes = Analysis#analysis.opaque_types,
+	  case
+            dialyzer_utils:get_record_and_type_info(AbstractCode, OpaqueTypes)
+          of
 	    {error, Reason} -> compile_error([Reason]);
 	    {ok, Records} ->
 	      Mod = cerl:concrete(cerl:module_name(Core)),

@@ -374,7 +374,7 @@
 -type opaques() :: [erl_type()] | 'universe'.
 
 -type record_key()   :: {'record', atom()}.
--type type_key()     :: {'type' | 'opaque', mfa()}.
+-type type_key()     :: {'type' | 'opaque', atom(), arity()}.
 -type record_value() :: [{atom(), erl_parse:abstract_expr(), erl_type()}].
 -type type_value()   :: {{module(), {file:name(), erl_anno:line()},
                           erl_parse:abstract_type(), ArgNames :: [atom()]},
@@ -4426,7 +4426,7 @@ mod_name(Mod, Name) ->
 %%
 %%=============================================================================
 
--type type_names() :: [type_key() | record_key()].
+-type type_names() :: [{'type' | 'opaque', mfa()} | record_key()].
 
 -type mta()   :: {module(), atom(), arity()}.
 -type mra()   :: {module(), atom(), arity()}.
