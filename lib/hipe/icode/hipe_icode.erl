@@ -2,7 +2,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 2001-2015. All Rights Reserved.
+%% Copyright Ericsson AB 2001-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -1378,12 +1378,16 @@ remove_constants(L) ->
 %% Substitution: replace occurrences of X by Y if {X,Y} is in the
 %%   Subst_list.
 
--spec subst([{_,_}], I) -> I when I :: icode_instr().
+-spec subst([{_,_}], I1) -> I2 when
+    I1 :: icode_instr(),
+    I2 :: icode_instr().
 
 subst(Subst, I) ->
   subst_defines(Subst, subst_uses(Subst, I)).
 
--spec subst_uses([{_,_}], I) -> I when I :: icode_instr().
+-spec subst_uses([{_,_}], I1) -> I2 when
+    I1 :: icode_instr(),
+    I2 :: icode_instr().
 
 subst_uses(Subst, I) ->
   case I of
@@ -1407,7 +1411,9 @@ subst_uses(Subst, I) ->
     #icode_label{} -> I
   end.
 
--spec subst_defines([{_,_}], I) -> I when I :: icode_instr().
+-spec subst_defines([{_,_}], I1) -> I2 when
+    I1 :: icode_instr(),
+    I2 :: icode_instr().
 
 subst_defines(Subst, I) ->
   case I of

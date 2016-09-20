@@ -183,7 +183,7 @@ correlate_labels(Tables, Labels) ->
   end.
 
 %% Fetches all values with a key in [Low, Hi)
--spec lookup_range(_::K, _::K, gb_trees:tree(K,V)) -> [_::V].
+-spec lookup_range(K::_,K::_, gb_trees:tree(K::_,V)) -> [V].
 lookup_range(Low, Hi, Tree) ->
   lookup_range_1(Hi, gb_trees:iterator_from(Low, Tree)).
 

@@ -595,7 +595,8 @@ join_whole_blocks(PartBBList, DSets0) ->
 -spec dsets_new([E]) -> dsets(E).
 dsets_new(Elems) -> maps:from_list([{E,{root,0}} || E <- Elems]).
 
--spec dsets_find(E, dsets(E)) -> {E, dsets(E)}.
+-spec dsets_find(E1,Dsets1) -> {E2,Dsets2} when
+    E1 :: _, E2 :: _, Dsets1 :: dsets(_), Dsets2 :: dsets(_).
 dsets_find(E, DS0) ->
   case DS0 of
     #{E := {root,_}} -> {E, DS0};
@@ -607,7 +608,7 @@ dsets_find(E, DS0) ->
    ;_ -> error(badarg, [E, DS0])
   end.
 
--spec dsets_union(E, E, dsets(E)) -> dsets(E).
+-spec dsets_union(E1::_, E2::_, dsets(_)) -> dsets(_).
 dsets_union(X, Y, DS0) ->
   {XRoot, DS1} = dsets_find(X, DS0),
   case dsets_find(Y, DS1) of
@@ -620,7 +621,7 @@ dsets_union(X, Y, DS0) ->
       end
   end.
 
--spec dsets_to_rllist(dsets(E)) -> {[{Root::E, Elems::[E]}], dsets(E)}.
+-spec dsets_to_rllist(dsets(_)) -> {[{Root::_,Elems::[_]}],dsets(_)}.
 dsets_to_rllist(DS0) ->
   {Lists, DS} = dsets_to_rllist(maps:keys(DS0), #{}, DS0),
   {maps:to_list(Lists), DS}.
