@@ -93,7 +93,7 @@ word_size(Architecture) ->
 %%========================================================================
 
 -spec load_native_code(Mod, binary(), hipe_architecture()) ->
-                          'no_native' | {'module', Mod} when Mod :: atom().
+                          'no_native' | {'module', Mod} when Mod :: module().
 %% @doc
 %%    Loads the native code of a module Mod.
 %%    Returns {module,Mod} on success (for compatibility with
@@ -131,7 +131,7 @@ version_check(Version, Mod) when is_atom(Mod) ->
 %%========================================================================
 
 -spec load_module(Mod, binary(), _, hipe_architecture()) ->
-                     'bad_crc' | {'module', Mod} when Mod :: atom().
+                     'bad_crc' | {'module', Mod} when Mod :: module().
 
 load_module(Mod, Bin, Beam, Architecture) ->
   erlang:system_flag(multi_scheduling, block_normal),
@@ -146,7 +146,7 @@ load_module(Mod, Bin, Beam, Architecture) ->
 %%========================================================================
 
 -spec load(Mod, binary(), hipe_architecture()) ->
-              'bad_crc' | {'module', Mod} when Mod :: atom().
+              'bad_crc' | {'module', Mod} when Mod :: module().
 
 load(Mod, Bin, Architecture) ->
   erlang:system_flag(multi_scheduling, block_normal),

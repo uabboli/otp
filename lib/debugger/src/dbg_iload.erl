@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 1998-2015. All Rights Reserved.
+%% Copyright Ericsson AB 1998-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@
 %% dbg_iserver. We are suspended until the module has been loaded.
 %%--------------------------------------------------------------------
 -spec load_mod(Mod, file:filename(), binary(), ets:tid()) ->
-        {'ok', Mod} when Mod :: atom().
+        {'ok', Mod} when Mod :: module().
 
 load_mod(Mod, File, Binary, Db) ->
     Flag = process_flag(trap_exit, true),
@@ -50,7 +50,7 @@ load_mod(Mod, File, Binary, Db) ->
 	    What
     end.
 
--spec load_mod1(atom(), file:filename(), binary(), ets:tid()) ->
+-spec load_mod1(module(), file:filename(), binary(), ets:tid()) ->
                        fun(() -> no_return()).
 
 load_mod1(Mod, File, Binary, Db) ->

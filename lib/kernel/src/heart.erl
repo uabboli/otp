@@ -127,7 +127,7 @@ clear_cmd() ->
     wait().
 
 -spec set_callback(Module,Function) -> 'ok' | {'error', {'bad_callback', {Module, Function}}} when
-      Module :: atom(),
+      Module :: module(),
       Function :: atom().
 
 set_callback(Module, Function) ->
