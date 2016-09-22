@@ -472,9 +472,8 @@ used_vars(Exprs, BindingsList) ->
 
 -spec(module(AbsForms) -> {ok, Warnings} | {error, Errors, Warnings} when
       AbsForms :: [erl_parse:abstract_form() | erl_parse:form_info()],
-      Warnings :: [{file:filename(),[ErrorInfo]}],
-      Errors :: [{FileName2 :: file:filename(),[ErrorInfo]}],
-      ErrorInfo :: error_info()).
+      Warnings :: [{file:filename(),[ErrorInfo :: error_info()]}],
+      Errors :: [{FileName2 :: file:filename(),[ErrorInfo :: error_info()]}]).
 
 module(Forms) ->
     Opts = compiler_options(Forms),
@@ -485,9 +484,8 @@ module(Forms) ->
              {ok, Warnings} | {error, Errors, Warnings} when
       AbsForms :: [erl_parse:abstract_form() | erl_parse:form_info()],
       FileName :: atom() | string(),
-      Warnings :: [{file:filename(),[ErrorInfo]}],
-      Errors :: [{FileName2 :: file:filename(),[ErrorInfo]}],
-      ErrorInfo :: error_info()).
+      Warnings :: [{file:filename(),[ErrorInfo :: error_info()]}],
+      Errors :: [{FileName2 :: file:filename(),[ErrorInfo :: error_info()]}]).
 
 module(Forms, FileName) ->
     Opts = compiler_options(Forms),
@@ -499,9 +497,8 @@ module(Forms, FileName) ->
       AbsForms :: [erl_parse:abstract_form() | erl_parse:form_info()],
       FileName :: atom() | string(),
       CompileOptions :: [compile:option()],
-      Warnings :: [{file:filename(),[ErrorInfo]}],
-      Errors :: [{FileName2 :: file:filename(),[ErrorInfo]}],
-      ErrorInfo :: error_info()).
+      Warnings :: [{file:filename(),[ErrorInfo :: error_info()]}],
+      Errors :: [{FileName2 :: file:filename(),[ErrorInfo :: error_info()]}]).
 
 module(Forms, FileName, Opts0) ->
     %% We want the options given on the command line to take

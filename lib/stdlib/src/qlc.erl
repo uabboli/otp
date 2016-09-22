@@ -311,27 +311,17 @@ eval(QH, Options) ->
             end
     end.
 
--spec(fold(Function, Acc0, QH) ->
-               Acc1 | Error when
+-spec(fold(Function, Acc0 :: Acc, QH) -> AccOut | Error when
       QH :: query_handle_or_list(),
-      Function :: fun((answer(), AccIn) -> AccOut),
-      Acc0 :: term(),
-      Acc1 :: term(),
-      AccIn :: term(),
-      AccOut :: term(),
+      Function :: fun((answer(), AccIn :: Acc) -> AccOut),
       Error :: {error, module(), Reason},
       Reason :: file_sorter:reason()).
 fold(Fun, Acc0, QH) ->
     fold(Fun, Acc0, QH, []).
 
--spec(fold(Function, Acc0, QH, Options) ->
-               Acc1 | Error when
+-spec(fold(Function, Acc0 :: Acc, QH, Options) -> AccOut | Error when
       QH :: query_handle_or_list(),
-      Function :: fun((answer(), AccIn) -> AccOut),
-      Acc0 :: term(),
-      Acc1 :: term(),
-      AccIn :: term(),
-      AccOut :: term(),
+      Function :: fun((answer(), AccIn :: Acc) -> AccOut),
       Options :: [Option] | Option,
       Option :: {cache_all, cache()} | cache_all
               | {max_list_size, max_list_size()}
@@ -664,13 +654,13 @@ string_to_handle(Str, Options, Bindings) when is_list(Str) ->
 string_to_handle(T1, T2, T3) ->    
     erlang:error(badarg, [T1, T2, T3]).
 
+-type traverse_fun1() :: fun((match_expression()) -> traverse_result()).
+-type traverse_fun0() :: fun(() -> traverse_result()).
+-type objects() :: [] | [term() | traverse_fun0() | objects()].
+-type traverse_result() :: objects() | term().
+
 -spec(table(TraverseFun, Options) -> QH when
-      TraverseFun :: TraverseFun0 | TraverseFun1,
-      TraverseFun0 :: fun(() -> TraverseResult),
-      TraverseFun1 :: fun((match_expression()) -> TraverseResult),
-      TraverseResult :: Objects | term(),
-      Objects :: [] | [term() | ObjectList],
-      ObjectList :: TraverseFun0 | Objects,
+      TraverseFun :: traverse_fun1() | traverse_fun0(),
       Options :: [Option] | Option,
       Option :: {format_fun, FormatFun}
               | {info_fun, InfoFun}
@@ -687,13 +677,16 @@ string_to_handle(T1, T2, T3) ->
                        | {lookup, Position, Keys, NElements, DepthFun},
       NElements :: infinity | pos_integer(),
       DepthFun :: fun((term()) -> term()),
+      Position :: pos_integer(),
+      Keys :: [term()],
       FormatedTable :: {Mod, Fun, Args}
                      | abstract_expr()
                      | string(),
       InfoFun :: undefined  | fun((InfoTag) -> InfoValue),
       InfoTag :: indices | is_unique_objects | keypos | num_of_objects,
       InfoValue :: undefined  | term(),
-      LookupFun :: undefined  | fun((Position, Keys) -> LookupResult),
+      LookupFun :: undefined  | fun((Position :: pos_integer(),
+                                     Keys :: [term()]) -> LookupResult),
       LookupResult :: [term()] | term(),
       ParentFun :: undefined  | fun(() -> ParentFunValue),
       PostFun :: undefined  | fun(() -> term()),
@@ -703,8 +696,6 @@ string_to_handle(T1, T2, T3) ->
       ParentFunValue :: undefined  | term(),
       StopFun :: undefined  | fun(() -> term()),
       KeyComparison :: '=:=' | '==',
-      Position :: pos_integer(),
-      Keys :: [term()],
       Mod :: atom(),
       Fun :: atom(),
       Args :: [term()],

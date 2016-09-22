@@ -608,6 +608,7 @@ Error: fun containing local Erlang function calls
 
     <func>
       <name name="init_table" arity="2"/>
+      <type name="init_fun"/>
       <fsummary>Replace all objects of an ETS table.</fsummary>
       <desc>
         <p>Replaces the existing objects of table <c><anno>Tab</anno></c> with
@@ -804,7 +805,7 @@ ets:is_compiled_ms(Broken).</code>
         <p>Continues a match started with
           <seealso marker="#match/3"><c>match/3</c></seealso>. The next
           chunk of the size specified in the initial <c>match/3</c>
-          call is returned together with a new <c><anno>Continuation</anno></c>,
+          call is returned together with a new <c><anno>Continuation2</anno></c>,
           which can be used in subsequent calls to this function.</p>
         <p>When there are no more objects in the table, <c>'$end_of_table'</c>
           is returned.</p>
@@ -881,7 +882,7 @@ ets:is_compiled_ms(Broken).</code>
           <seealso marker="#match_object/3"><c>match_object/3</c></seealso>.
           The next chunk of the size specified in the initial
           <c>match_object/3</c> call is returned together with a new
-          <c><anno>Continuation</anno></c>, which can be used in subsequent
+          <c><anno>Continuation2</anno></c>, which can be used in subsequent
           calls to this function.</p>
         <p>When there are no more objects in the table, <c>'$end_of_table'</c>
           is returned.</p>
@@ -1330,7 +1331,7 @@ clean_all_with_value(Tab,X,Key) ->
         <p>Continues a match started with
           <seealso marker="#select/3"><c>select/3</c></seealso>. The next
           chunk of the size specified in the initial <c>select/3</c>
-          call is returned together with a new <c><anno>Continuation</anno></c>,
+          call is returned together with a new <c><anno>Continuation2</anno></c>,
           which can be used in subsequent calls to this function.</p>
         <p>When there are no more objects in the table, <c>'$end_of_table'</c>
           is returned.</p>

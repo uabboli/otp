@@ -1239,6 +1239,10 @@ ets:match_spec_run(
 
     <func>
       <name name="table" arity="2"/>
+      <type name="traverse_fun1"/>
+      <type name="traverse_fun0"/>
+      <type name="traverse_result"/>
+      <type name="objects"/>
       <fsummary>Return a query handle for a table.</fsummary>
       <desc>
         <p>Returns a query handle for a QLC table.

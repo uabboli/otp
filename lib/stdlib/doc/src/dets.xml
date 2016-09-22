@@ -477,6 +477,7 @@
     <func>
       <name name="init_table" arity="2"/>
       <name name="init_table" arity="3"/>
+      <type name="init_fun"/>
       <fsummary>Replace all objects of a Dets table.</fsummary>
       <desc>
         <p>Replaces the existing objects of table <c><anno>Name</anno></c>

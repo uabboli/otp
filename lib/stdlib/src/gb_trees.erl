@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 2001-2015. All Rights Reserved.
+%% Copyright Ericsson AB 2001-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -173,24 +173,22 @@
 empty() ->
     {0, nil}.
 
--spec is_empty(Tree) -> boolean() when
-      Tree :: tree().
+-spec is_empty(Tree :: tree()) -> boolean().
 
 is_empty({0, nil}) ->
     true;
 is_empty(_) ->
     false.
 
--spec size(Tree) -> non_neg_integer() when
-      Tree :: tree().
+-spec size(Tree :: tree()) -> non_neg_integer().
 
 size({Size, _}) when is_integer(Size), Size >= 0 ->
     Size.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec lookup(Key, Tree) -> 'none' | {'value', Value} when
-      Tree :: tree(Key, Value).
+-spec lookup(Key :: term(), Tree :: tree()) ->
+                    'none' | {'value', Value :: term()}.
 
 lookup(Key, {_, T}) ->
     lookup_1(Key, T).
@@ -215,8 +213,7 @@ lookup_1(_, nil) ->
 
 %% This is a specialized version of `lookup'.
 
--spec is_defined(Key, Tree) -> boolean() when
-      Tree :: tree(Key, Value :: term()).
+-spec is_defined(Key :: term(), Tree :: tree()) -> boolean().
 
 is_defined(Key, {_, T}) ->
     is_defined_1(Key, T).
@@ -234,8 +231,7 @@ is_defined_1(_, nil) ->
 
 %% This is a specialized version of `lookup'.
 
--spec get(Key, Tree) -> Value when
-      Tree :: tree(Key, Value).
+-spec get(Key :: term(), Tree :: tree()) -> Value :: term().
 
 get(Key, {_, T}) ->
     get_1(Key, T).
@@ -249,9 +245,8 @@ get_1(_, {_, Value, _, _}) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec update(Key, Value, Tree1) -> Tree2 when
-      Tree1 :: tree(Key, Value),
-      Tree2 :: tree(Key, Value).
+-spec update(Key, Value, Tree1 :: tree(Key, Value1)) ->
+                    tree(Key, Value1 | Value).
 
 update(Key, Val, {S, T}) ->
     T1 = update_1(Key, Val, T),
@@ -268,9 +263,8 @@ update_1(Key, Value, {_, _, Smaller, Bigger}) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec insert(Key, Value, Tree1) -> Tree2 when
-      Tree1 :: tree(Key, Value),
-      Tree2 :: tree(Key, Value).
+-spec insert(Key, Value, Tree1 :: tree(Key1, Value1)) ->
+                    tree(Key1 | Key, Value1 | Value).
 
 insert(Key, Val, {S, T}) when is_integer(S) ->
     S1 = S+1,
@@ -319,9 +313,8 @@ insert_1(Key, _, _, _) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec enter(Key, Value, Tree1) -> Tree2 when
-      Tree1 :: tree(Key, Value),
-      Tree2 :: tree(Key, Value).
+-spec enter(Key, Value, Tree1 :: tree(Key1, Value1)) ->
+                   tree(Key1 | Key, Value1 | Value).
 
 enter(Key, Val, T) ->
     case is_defined(Key, T) of
@@ -344,9 +337,7 @@ count(nil) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec balance(Tree1) -> Tree2 when
-      Tree1 :: tree(Key, Value),
-      Tree2 :: tree(Key, Value).
+-spec balance(Tree1 :: tree(Key, Value)) -> tree(Key, Value).
 
 balance({S, T}) ->
     {S, balance(T, S)}.
@@ -371,9 +362,7 @@ balance_list_1([{Key, Val} | L], 1) ->
 balance_list_1(L, 0) ->
     {nil, L}.
 
--spec from_orddict(List) -> Tree when
-      List :: [{Key, Value}],
-      Tree :: tree(Key, Value).
+-spec from_orddict(List :: [{Key, Value}]) -> Tree :: tree(Key, Value).
 
 from_orddict(L) ->
     S = length(L),
@@ -381,9 +370,8 @@ from_orddict(L) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec delete_any(Key, Tree1) -> Tree2 when
-      Tree1 :: tree(Key, Value),
-      Tree2 :: tree(Key, Value).
+-spec delete_any(Key :: term(), Tree1 :: tree(Key, Value)) ->
+                        tree(Key, Value).
 
 delete_any(Key, T) ->
     case is_defined(Key, T) of
@@ -395,9 +383,8 @@ delete_any(Key, T) ->
 
 %%% delete. Assumes that key is present.
 
--spec delete(Key, Tree1) -> Tree2 when
-      Tree1 :: tree(Key, Value),
-      Tree2 :: tree(Key, Value).
+-spec delete(Key :: term(), Tree1 :: tree(Key, Value)) ->
+                    tree(Key, Value).
 
 delete(Key, {S, T}) when is_integer(S), S >= 0 ->
     {S - 1, delete_1(Key, T)}.
@@ -423,9 +410,8 @@ merge(Smaller, Larger) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec take_smallest(Tree1) -> {Key, Value, Tree2} when
-      Tree1 :: tree(Key, Value),
-      Tree2 :: tree(Key, Value).
+-spec take_smallest(Tree1 :: tree(Key, Val)) ->
+                           {Key, Value :: Val, Tree2 :: tree(Key, Val)}.
 
 take_smallest({Size, Tree}) when is_integer(Size), Size >= 0 ->
     {Key, Value, Larger} = take_smallest1(Tree),
@@ -437,8 +423,7 @@ take_smallest1({Key, Value, Smaller, Larger}) ->
     {Key1, Value1, Smaller1} = take_smallest1(Smaller),
     {Key1, Value1, {Key, Value, Smaller1, Larger}}.
 
--spec smallest(Tree) -> {Key, Value} when
-      Tree :: tree(Key, Value).
+-spec smallest(Tree :: tree(Key, Value)) -> {Key, Value}.
 
 smallest({_, Tree}) ->
     smallest_1(Tree).
@@ -448,9 +433,8 @@ smallest_1({Key, Value, nil, _Larger}) ->
 smallest_1({_Key, _Value, Smaller, _Larger}) ->
     smallest_1(Smaller).
 
--spec take_largest(Tree1) -> {Key, Value, Tree2} when
-      Tree1 :: tree(Key, Value),
-      Tree2 :: tree(Key, Value).
+-spec take_largest(Tree1 :: tree(Key, Val)) ->
+                           {Key, Value :: Val, Tree2 :: tree(Key, Val)}.
 
 take_largest({Size, Tree}) when is_integer(Size), Size >= 0 ->
     {Key, Value, Smaller} = take_largest1(Tree),
@@ -462,8 +446,7 @@ take_largest1({Key, Value, Smaller, Larger}) ->
     {Key1, Value1, Larger1} = take_largest1(Larger),
     {Key1, Value1, {Key, Value, Smaller, Larger1}}.
 
--spec largest(Tree) -> {Key, Value} when
-      Tree :: tree(Key, Value).
+-spec largest(Tree :: tree(Key, Value)) -> {Key, Value}.
 
 largest({_, Tree}) ->
     largest_1(Tree).
@@ -475,8 +458,7 @@ largest_1({_Key, _Value, _Smaller, Larger}) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec to_list(Tree) -> [{Key, Value}] when
-      Tree :: tree(Key, Value).
+-spec to_list(Tree :: tree(Key, Value)) -> [{Key, Value}].
 			   
 to_list({_, T}) ->
     to_list(T, []).
@@ -489,8 +471,7 @@ to_list(nil, L) -> L.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec keys(Tree) -> [Key] when
-      Tree :: tree(Key, Value :: term()).
+-spec keys(Tree :: tree(Key, Value :: term())) -> [Key].
 
 keys({_, T}) ->
     keys(T, []).
@@ -501,8 +482,7 @@ keys(nil, L) -> L.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec values(Tree) -> [Value] when
-      Tree :: tree(Key :: term(), Value).
+-spec values(Tree :: tree(Key :: term(), Value)) -> [Value].
 
 values({_, T}) ->
     values(T, []).
@@ -513,9 +493,7 @@ values(nil, L) -> L.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec iterator(Tree) -> Iter when
-      Tree :: tree(Key, Value),
-      Iter :: iter(Key, Value).
+-spec iterator(Tree :: tree(Key, Value)) -> iter(Key, Value).
 
 iterator({_, T}) ->
     iterator_1(T).
@@ -535,9 +513,7 @@ iterator(nil, As) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec iterator_from(Key, Tree) -> Iter when
-      Tree :: tree(Key, Value),
-      Iter :: iter(Key, Value).
+-spec iterator_from(Key, Tree :: tree(Key, Value)) -> iter(Key, Value).
 
 iterator_from(S, {_, T}) ->
     iterator_1_from(S, T).
@@ -556,9 +532,8 @@ iterator_from(_, nil, As) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec next(Iter1) -> 'none' | {Key, Value, Iter2} when
-      Iter1 :: iter(Key, Value),
-      Iter2 :: iter(Key, Value).
+-spec next(Iter1 :: iter(Key, Value)) ->
+                  'none' | {Key, Value, Iter2 :: iter(Key, Value)}.
 
 next([{X, V, _, T} | As]) ->
     {X, V, iterator(T, As)};
@@ -567,10 +542,9 @@ next([]) ->
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec map(Function, Tree1) -> Tree2 when
-      Function :: fun((K :: Key, V1 :: Value1) -> V2 :: Value2),
-      Tree1 :: tree(Key, Value1),
-      Tree2 :: tree(Key, Value2).
+-spec map(Function, Tree1 :: tree(Key, Value1)) ->
+                 Tree2 :: tree(Key, Value2) when
+      Function :: fun((Key, Value1) -> Value2).
 
 map(F, {Size, Tree}) when is_function(F, 2) ->
     {Size, map_1(F, Tree)}.

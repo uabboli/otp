@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %% 
-%% Copyright Ericsson AB 2001-2015. All Rights Reserved.
+%% Copyright Ericsson AB 2001-2016. All Rights Reserved.
 %% 
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -211,27 +211,23 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
--spec empty() -> Set when
-      Set :: set().
+-spec empty() -> set().
 
 empty() ->
     {0, nil}.
 
--spec new() -> Set when
-      Set :: set().
+-spec new() -> set().
 
 new() -> empty().
 
--spec is_empty(Set) -> boolean() when
-      Set :: set().
+-spec is_empty(Set :: set()) -> boolean().
 
 is_empty({0, nil}) ->
     true;
 is_empty(_) ->
     false.
 
--spec size(Set) -> non_neg_integer() when
-      Set :: set().
+-spec size(Set :: set()) -> non_neg_integer().
 
 size({Size, _}) ->
     Size.
@@ -241,14 +237,12 @@ size({Size, _}) ->
 singleton(Key) ->
     {1, {Key, nil, nil}}.
 
--spec is_element(Element, Set) -> boolean() when
-      Set :: set(Element).
+-spec is_element(Element :: term(), Set :: set()) -> boolean().
 
 is_element(Key, S) ->
     is_member(Key, S).
 
--spec is_member(Element, Set) -> boolean() when
-      Set :: set(Element).
+-spec is_member(Element :: term(), Set :: set()) -> boolean().
 
 is_member(Key, {_, T}) ->
     is_member_1(Key, T).
@@ -262,9 +256,7 @@ is_member_1(_, {_, _, _}) ->
 is_member_1(_, nil) ->
     false.
 
--spec insert(Element, Set1) -> Set2 when
-      Set1 :: set(Element),
-      Set2 :: set(Element).
+-spec insert(Element, Set1 :: set(Element1)) -> set(Element1 | Element).
 
 insert(Key, {S, T}) ->
     S1 = S + 1,
@@ -320,9 +312,7 @@ count({_, Sm, Bi}) ->
 count(nil) ->
     {1, 0}.
 
--spec balance(Set1) -> Set2 when
-      Set1 :: set(Element),
-      Set2 :: set(Element).
+-spec balance(Set1 :: set(Element)) -> set(Element).
 
 balance({S, T}) ->
     {S, balance(T, S)}.
@@ -347,16 +337,12 @@ balance_list_1([Key | L], 1) ->
 balance_list_1(L, 0) ->
     {nil, L}.
 
--spec add_element(Element, Set1) -> Set2 when
-      Set1 :: set(Element),
-      Set2 :: set(Element).
+-spec add_element(Element, Set1 :: set(Element1)) -> set(Element1 | Element).
 
 add_element(X, S) ->
     add(X, S).
 
--spec add(Element, Set1) -> Set2 when
-      Set1 :: set(Element),
-      Set2 :: set(Element).
+-spec add(Element, Set1 :: set(Element1)) -> set(Element1 | Element).
 
 add(X, S) ->
     case is_member(X, S) of
@@ -366,31 +352,23 @@ add(X, S) ->
 	    insert(X, S)
     end.
 
--spec from_list(List) -> Set when
-      List :: [Element],
-      Set :: set(Element).
+-spec from_list(List :: [Element]) -> set(Element).
 
 from_list(L) ->
     from_ordset(ordsets:from_list(L)).
 
--spec from_ordset(List) -> Set when
-      List :: [Element],
-      Set :: set(Element).
+-spec from_ordset(List :: [Element]) -> set(Element).
 
 from_ordset(L) ->
     S = length(L),
     {S, balance_list(L, S)}.
 
--spec del_element(Element, Set1) -> Set2 when
-      Set1 :: set(Element),
-      Set2 :: set(Element).
+-spec del_element(Element :: term(), Set1 :: set(Element)) -> set(Element).
 
 del_element(Key, S) ->
     delete_any(Key, S).
 
--spec delete_any(Element, Set1) -> Set2 when
-      Set1 :: set(Element),
-      Set2 :: set(Element).
+-spec delete_any(Element :: term(), Set1 :: set(Element)) -> set(Element).
 
 delete_any(Key, S) ->
     case is_member(Key, S) of
@@ -400,9 +378,7 @@ delete_any(Key, S) ->
  	    S
     end.
 
--spec delete(Element, Set1) -> Set2 when
-      Set1 :: set(Element),
-      Set2 :: set(Element).
+-spec delete(Element :: term(), Set1 :: set(Element)) -> set(Element).
 
 delete(Key, {S, T}) ->
     {S - 1, delete_1(Key, T)}.
@@ -424,9 +400,7 @@ merge(Smaller, Larger) ->
     {Key, Larger1} = take_smallest1(Larger),
     {Key, Smaller, Larger1}.
 
--spec take_smallest(Set1) -> {Element, Set2} when
-      Set1 :: set(Element),
-      Set2 :: set(Element).
+-spec take_smallest(Set1 :: set(Element)) -> {Element, Set2 :: set(Element)}.
 
 take_smallest({S, T}) ->
     {Key, Larger} = take_smallest1(T),
@@ -438,8 +412,7 @@ take_smallest1({Key, Smaller, Larger}) ->
     {Key1, Smaller1} = take_smallest1(Smaller),
     {Key1, {Key, Smaller1, Larger}}.
 
--spec smallest(Set) -> Element when
-      Set :: set(Element).
+-spec smallest(Set :: set(Element)) -> Element.
 
 smallest({_, T}) ->
     smallest_1(T).
@@ -449,9 +422,7 @@ smallest_1({Key, nil, _Larger}) ->
 smallest_1({_Key, Smaller, _Larger}) ->
     smallest_1(Smaller).
 
--spec take_largest(Set1) -> {Element, Set2} when
-      Set1 :: set(Element),
-      Set2 :: set(Element).
+-spec take_largest(Set1 :: set(Element)) -> {Element, Set2 :: set(Element)}.
 
 take_largest({S, T}) ->
     {Key, Smaller} = take_largest1(T),
@@ -463,8 +434,7 @@ take_largest1({Key, Smaller, Larger}) ->
     {Key1, Larger1} = take_largest1(Larger),
     {Key1, {Key, Smaller, Larger1}}.
 
--spec largest(Set) -> Element when
-      Set :: set(Element).
+-spec largest(Set :: set(Element)) -> Element.
 
 largest({_, T}) ->
     largest_1(T).
@@ -474,9 +444,7 @@ largest_1({Key, _Smaller, nil}) ->
 largest_1({_Key, _Smaller, Larger}) ->
     largest_1(Larger).
 
--spec to_list(Set) -> List when
-      Set :: set(Element),
-      List :: [Element].
+-spec to_list(Set :: set(Element)) -> [Element].
 
 to_list({_, T}) ->
     to_list(T, []).
@@ -487,9 +455,7 @@ to_list({Key, Small, Big}, L) ->
     to_list(Small, [Key | to_list(Big, L)]);
 to_list(nil, L) -> L.
 
--spec iterator(Set) -> Iter when
-      Set :: set(Element),
-      Iter :: iter(Element).
+-spec iterator(Set :: set(Element)) -> iter(Element).
 
 iterator({_, T}) ->
     iterator(T, []).
@@ -504,9 +470,7 @@ iterator({_, L, _} = T, As) ->
 iterator(nil, As) ->
     As.
 
--spec iterator_from(Element, Set) -> Iter when
-      Set :: set(Element),
-      Iter :: iter(Element).
+-spec iterator_from(Element, Set :: set(Element)) -> iter(Element).
 
 iterator_from(S, {_, T}) ->
     iterator_from(S, T, []).
@@ -520,9 +484,8 @@ iterator_from(S, {_, L, _} = T, As) ->
 iterator_from(_, nil, As) ->
     As.
 
--spec next(Iter1) -> {Element, Iter2} | 'none' when
-      Iter1 :: iter(Element),
-      Iter2 :: iter(Element).
+-spec next(Iter1 :: iter(Element)) ->
+                   'none' | {Element, Iter2 :: iter(Element)}.
 
 next([{X, _, T} | As]) ->
     {X, iterator(T, As)};
@@ -552,10 +515,8 @@ next([]) ->
 %% traversing the elements can be devised, but they all have higher
 %% overhead.
 
--spec union(Set1, Set2) -> Set3 when
-      Set1 :: set(Element),
-      Set2 :: set(Element),
-      Set3 :: set(Element).
+-spec union(Set1 :: set(Element1), Set2 :: set(Element2)) ->
+                   set(Element1 | Element2).
 
 union({N1, T1}, {N2, T2}) when N2 < N1 ->
     union(to_list_1(T2), N2, T1, N1);
@@ -657,9 +618,7 @@ balance_revlist_1([Key | L], 1) ->
 balance_revlist_1(L, 0) ->
     {nil, L}.
 
--spec union(SetList) -> Set when
-      SetList :: [set(Element),...],
-      Set :: set(Element).
+-spec union(SetList :: [set(Element)]) -> set(Element).
 
 union([S | Ss]) ->
     union_list(S, Ss);
@@ -672,10 +631,7 @@ union_list(S, []) -> S.
 
 %% The rest is modelled on the above.
 
--spec intersection(Set1, Set2) -> Set3 when
-      Set1 :: set(Element),
-      Set2 :: set(Element),
-      Set3 :: set(Element).
+-spec intersection(Set1 :: set(), Set2 :: set()) -> set().
 
 intersection({N1, T1}, {N2, T2}) when N2 < N1 ->
     intersection(to_list_1(T2), N2, T1, N1);
@@ -724,8 +680,8 @@ intersection_2(_, [], As, S) ->
     {S, balance_revlist(As, S)}.
 
 -spec intersection(SetList) -> Set when
-      SetList :: [set(Element),...],
-      Set :: set(Element).
+      SetList :: [set(),...],
+      Set :: set().
 
 intersection([S | Ss]) ->
     intersection_list(S, Ss).
@@ -734,9 +690,7 @@ intersection_list(S, [S1 | Ss]) ->
     intersection_list(intersection(S, S1), Ss);
 intersection_list(S, []) -> S.
 
--spec is_disjoint(Set1, Set2) -> boolean() when
-      Set1 :: set(Element),
-      Set2 :: set(Element).
+-spec is_disjoint(Set1 :: set(), Set2 :: set()) -> boolean().
 
 is_disjoint({N1, T1}, {N2, T2}) when N1 < N2 ->
     is_disjoint_1(T1, T2);
@@ -764,18 +718,12 @@ is_disjoint_1(_, nil) ->
 %% the sets. Therefore, we always build a new tree, and thus we need to
 %% traverse the whole element list of the left operand.
 
--spec subtract(Set1, Set2) -> Set3 when
-      Set1 :: set(Element),
-      Set2 :: set(Element),
-      Set3 :: set(Element).
+-spec subtract(Set1 :: set(Element), Set2 :: set()) -> set(Element).
 
 subtract(S1, S2) ->
     difference(S1, S2).
 
--spec difference(Set1, Set2) -> Set3 when
-      Set1 :: set(Element),
-      Set2 :: set(Element),
-      Set3 :: set(Element).
+-spec difference(Set1 :: set(Element), Set2 :: set()) -> set(Element).
 
 difference({N1, T1}, {N2, T2}) ->
     difference(to_list_1(T1), N1, T2, N2).
@@ -823,9 +771,7 @@ difference_2(Xs, [], As, S) ->
 %% Subset testing is much the same thing as set difference, but
 %% without the construction of a new set.
 
--spec is_subset(Set1, Set2) -> boolean() when
-      Set1 :: set(Element),
-      Set2 :: set(Element).
+-spec is_subset(Set1 :: set(), Set2 :: set()) -> boolean().
 
 is_subset({N1, T1}, {N2, T2}) ->
     is_subset(to_list_1(T1), N1, T2, N2).
@@ -866,28 +812,20 @@ is_subset_2(_, []) ->
 
 %% For compatibility with `sets':
 
--spec is_set(Term) -> boolean() when
-      Term :: term().
+-spec is_set(Term :: term()) -> boolean().
 
 is_set({0, nil}) -> true;
 is_set({N, {_, _, _}}) when is_integer(N), N >= 0 -> true;
 is_set(_) -> false.
 
--spec filter(Pred, Set1) -> Set2 when
-      Pred :: fun((Element) -> boolean()),
-      Set1 :: set(Element),
-      Set2 :: set(Element).
+-spec filter(Pred, Set1 :: set(Element)) -> set(Element) when
+      Pred :: fun((Element) -> boolean()).
 
 filter(F, S) ->
     from_ordset([X || X <- to_list(S), F(X)]).
 
--spec fold(Function, Acc0, Set) -> Acc1 when
-      Function :: fun((Element, AccIn) -> AccOut),
-      Acc0 :: Acc,
-      Acc1 :: Acc,
-      AccIn :: Acc,
-      AccOut :: Acc,
-      Set :: set(Element).
+-spec fold(Function, Acc0 :: Acc, Set :: set(Element)) -> AccOut when
+      Function :: fun((Element, Acc) -> AccOut).
 
 fold(F, A, {_, T}) when is_function(F, 2) ->
     fold_1(F, A, T).

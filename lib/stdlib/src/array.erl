@@ -572,7 +572,8 @@ resize_test_() ->
 %% @see get/2
 %% @see reset/2
 
--spec set(I :: array_indx(), Value :: Type, Array :: array(Type)) -> array(Type).
+-spec set(I :: array_indx(), Value :: Type, Array :: array(Type1)) ->
+                 array(Type | Type1).
 
 set(I, Value, #array{size = N, max = M, default = D, elements = E}=A)
   when is_integer(I), I >= 0 ->
@@ -1434,7 +1435,7 @@ map_2_1(_I, _E, L) ->
     L.
 
 -spec map_3(pos_integer(), _, array_indx(),
-	    fun((array_indx(),_) -> _), _, non_neg_integer(), [X]) -> [X].
+	    fun((array_indx(),X1) -> X2), _, non_neg_integer(), [X1]) -> [X2].
 
 map_3(I, E, Ix, F, D, N, L) when I =< N ->
     map_3(I+1, E, Ix+1, F, D, N, [F(Ix, element(I, E)) | L]);
@@ -1526,7 +1527,7 @@ sparse_map_2_1(_I, _E, L) ->
     L.
 
 -spec sparse_map_3(pos_integer(), _, array_indx(),
-		   fun((array_indx(),_) -> _), _, [X]) -> [X].
+		   fun((array_indx(),X1) -> X2), _, [X1]) -> [X2].
 
 sparse_map_3(I, T, Ix, F, D, L) when I =< ?LEAFSIZE ->
     case element(I, T) of
@@ -1608,8 +1609,8 @@ foldl_2(I, E, A, Ix, F, D, N, R, S) ->
     foldl_2(I+1, E, foldl_1(S-1, element(I, E), A, Ix, F, D),
 	    Ix + S, F, D, N, R, S).
 
--spec foldl_3(pos_integer(), _, A, array_indx(),
-	      fun((array_indx, _, A) -> B), integer()) -> B.
+-spec foldl_3(pos_integer(), _, A, array_indx(), Fun, integer()) -> B when
+      Fun :: fun((array_indx, _, A) -> B).
 
 foldl_3(I, E, A, Ix, F, N) when I =< N ->
     foldl_3(I+1, E, F(Ix, element(I, E), A), Ix+1, F, N);
@@ -1763,8 +1764,8 @@ foldr_2(I, E, Ix, A, F, D, R, R0) ->
 	    foldr_1(R, element(I, E), Ix, A, F, D),
 	    F, D, R0, R0).
 
--spec foldr_3(array_indx(), term(), integer(), A,
-	      fun((array_indx(), _, A) -> B)) -> B.
+-spec foldr_3(array_indx(), term(), integer(), A, Fun) -> B when
+      Fun :: fun((array_indx(), _, A) -> B).
 
 foldr_3(0, _E, _Ix, A, _F) ->
     A;
@@ -1843,8 +1844,8 @@ sparse_foldr_2(I, E, Ix, A, F, D, R, R0) ->
 	    sparse_foldr_1(R, element(I, E), Ix, A, F, D),
 	    F, D, R0, R0).
 
--spec sparse_foldr_3(array_indx(), _, array_indx(), A,
-		     fun((array_indx(), _, A) -> B), _) -> B.
+-spec sparse_foldr_3(array_indx(), _, array_indx(), A, Fun, _) -> B when
+      Fun :: fun((array_indx(), _, A) -> B).
 
 sparse_foldr_3(0, _T, _Ix, A, _F, _D) ->
     A;

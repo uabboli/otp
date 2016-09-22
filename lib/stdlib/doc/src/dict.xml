@@ -134,7 +134,7 @@
       <desc>
         <p>Calls <c><anno>Fun</anno></c> on successive keys and values of
           dictionary <c><anno>Dict</anno></c> together with an extra argument
-          <c>Acc</c>
+          <c><anno>Acc</anno></c>
           (short for accumulator). <c><anno>Fun</anno></c> must return a new
           accumulator that is passed to the next call. <c><anno>Acc0</anno></c>
           is returned if the dictionary is empty. The evaluation order is

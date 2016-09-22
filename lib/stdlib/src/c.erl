@@ -768,8 +768,7 @@ memory() -> erlang:memory().
 -spec memory(Type) -> Size when
                Type :: atom(),
                Size :: non_neg_integer()
-          ; (Types) -> [{Type, Size}] when
-               Types :: [Type],
+          ; (Types :: [Type]) -> [{Type, Size}] when
                Type :: atom(),
                Size :: non_neg_integer().
 

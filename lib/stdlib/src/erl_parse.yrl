@@ -1517,13 +1517,8 @@ map_anno(F0, Abstr) ->
     {NewAbstr, []} = modify_anno1(Abstr, [], F),
     NewAbstr.
 
--spec fold_anno(Fun, Acc0, Abstr) -> Acc1 when
-      Fun :: fun((Anno, AccIn) -> AccOut),
-      Anno :: erl_anno:anno(),
-      Acc0 :: term(),
-      Acc1 :: term(),
-      AccIn :: term(),
-      AccOut :: term(),
+-spec fold_anno(Fun, AccIn :: Acc, Abstr) -> AccOut when
+      Fun :: fun((Anno :: erl_anno:anno(), Acc) -> AccOut),
       Abstr :: erl_parse_tree().
 
 fold_anno(F0, Acc0, Abstr) ->
@@ -1531,14 +1526,10 @@ fold_anno(F0, Acc0, Abstr) ->
     {_, NewAcc} = modify_anno1(Abstr, Acc0, F),
     NewAcc.
 
--spec mapfold_anno(Fun, Acc0, Abstr) -> {NewAbstr, Acc1} when
-      Fun :: fun((Anno, AccIn) -> {NewAnno, AccOut}),
+-spec mapfold_anno(Fun, AccIn :: Acc, Abstr) -> {NewAbstr, AccOut} when
+      Fun :: fun((Anno, Acc) -> {NewAnno, AccOut}),
       Anno :: erl_anno:anno(),
       NewAnno :: erl_anno:anno(),
-      Acc0 :: term(),
-      Acc1 :: term(),
-      AccIn :: term(),
-      AccOut :: term(),
       Abstr :: erl_parse_tree(),
       NewAbstr :: erl_parse_tree().
 

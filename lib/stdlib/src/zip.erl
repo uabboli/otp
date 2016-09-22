@@ -354,7 +354,7 @@ unzip(F) -> unzip(F, []).
 -spec(unzip(Archive, Options) -> RetValue when
       Archive :: file:name() | binary(),
       Options :: [Option],
-      Option  :: {file_list, FileList} | cooked
+      Option  :: {file_list, [file:name()]} | cooked
                | keep_old_files | verbose | memory |
                  {file_filter, FileFilter} | {cwd, CWD},
       FileList :: [file:name()],
@@ -387,15 +387,11 @@ do_unzip(F, Options) ->
     {ok, Files}.
 
 %% Iterate over all files in a zip archive
--spec(foldl(Fun, Acc0, Archive) -> {ok, Acc1} | {error, Reason} when
-      Fun :: fun((FileInArchive, GetInfo, GetBin, AccIn) -> AccOut),
+-spec(foldl(Fun, Acc0 :: Acc, Archive) -> {ok, AccOut} | {error, Reason} when
+      Fun :: fun((FileInArchive, GetInfo, GetBin, AccIn :: Acc) -> AccOut),
       FileInArchive :: file:name(),
       GetInfo :: fun(() -> file:file_info()),
       GetBin :: fun(() -> binary()),
-      Acc0 :: term(),
-      Acc1 :: term(),
-      AccIn :: term(),
-      AccOut :: term(),
       Archive :: file:name() | {file:name(), binary()},
       Reason :: term()).
 
@@ -758,7 +754,7 @@ extract(F) -> unzip(F).
 -spec(extract(Archive, Options) -> RetValue when
       Archive :: file:name() | binary(),
       Options :: [Option],
-      Option  :: {file_list, FileList}
+      Option  :: {file_list, [file:name()]}
                | keep_old_files | verbose | memory |
                  {file_filter, FileFilter} | {cwd, CWD},
       FileList :: [file:name()],

@@ -95,7 +95,7 @@ append_values(a, [{a, [1,2]}, {b, 0}, {a, 3}, {c, -1}, {a, [4]}])</code>
       <fsummary></fsummary>
       <desc>
         <p>Deletes all entries associated with <c><anno>Key</anno></c> from
-          <c><anno>List</anno></c>.</p>
+          <c><anno>List1</anno></c>.</p>
       </desc>
     </func>
 

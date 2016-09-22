@@ -92,13 +92,11 @@ is_regular(File) ->
 is_regular(File, Mod) when is_atom(Mod) ->
     do_is_regular(File, Mod).
     
--spec fold_files(Dir, RegExp, Recursive, Fun, AccIn) -> AccOut when
+-spec fold_files(Dir, RegExp, Recursive, Fun, Acc0 :: Acc) -> AccOut when
       Dir :: dirname(),
       RegExp :: string(),
       Recursive :: boolean(),
-      Fun :: fun((F :: file:filename(), AccIn) -> AccOut),
-      AccIn :: term(),
-      AccOut :: term().
+      Fun :: fun((F :: file:filename(), Acc) -> AccOut).
 fold_files(Dir, RegExp, Recursive, Fun, Acc) ->
     do_fold_files(Dir, RegExp, Recursive, Fun, Acc, file).
 

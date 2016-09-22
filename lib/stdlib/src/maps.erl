@@ -32,121 +32,83 @@
          to_list/1, update/3, values/1]).
 
 %% Shadowed by erl_bif_types: maps:get/2
--spec get(Key,Map) -> Value when
-    Key :: term(),
-    Map :: map(),
-    Value :: term().
+-spec get(Key, Map :: #{Key => Value}) -> Value.
 
 get(_,_) -> erlang:nif_error(undef).
 
 
--spec find(Key,Map) -> {ok, Value} | error when
-    Key :: term(),
-    Map :: map(),
-    Value :: term().
+-spec find(Key :: term(), Map :: #{_ => Value}) -> {ok, Value} | 'error'.
 
 find(_,_) -> erlang:nif_error(undef).
 
 %% Shadowed by erl_bif_types: maps:from_list/1
--spec from_list(List) -> Map when
-    List :: [{Key,Value}],
-    Key :: term(),
-    Value :: term(),
-    Map :: map().
+-spec from_list(List :: [{Key, Value}]) -> #{Key => Value}.
 
 from_list(_) -> erlang:nif_error(undef).
 
 
 %% Shadowed by erl_bif_types: maps:is_key/2
--spec is_key(Key,Map) -> boolean() when
-    Key :: term(),
-    Map :: map().
+-spec is_key(Key :: term(), Map :: map()) -> boolean().
 
 is_key(_,_) -> erlang:nif_error(undef).
 
 
--spec keys(Map) -> Keys when
-    Map :: map(),
-    Keys :: [Key],
-    Key :: term().
+-spec keys(Map :: #{Key => _}) -> [Key].
 
 keys(_) -> erlang:nif_error(undef).
 
 
 %% Shadowed by erl_bif_types: maps:merge/2
--spec merge(Map1,Map2) -> Map3 when
-    Map1 :: map(),
-    Map2 :: map(),
-    Map3 :: map().
+-spec merge(Map1 :: #{Key1 => Value1}, Map2 :: #{Key2 => Value2}) ->
+                   Map3 :: #{Key1 | Key2 => Value1 | Value2}.
 
 merge(_,_) -> erlang:nif_error(undef).
 
 
 
--spec new() -> Map when
-    Map :: map().
+-spec new() -> map().
 
 new() -> erlang:nif_error(undef).
 
 
 %% Shadowed by erl_bif_types: maps:put/3
--spec put(Key,Value,Map1) -> Map2 when
-    Key :: term(),
-    Value :: term(),
-    Map1 :: map(),
-    Map2 :: map().
+-spec put(Key, Value, Map1 :: #{Key1 => Value1}) ->
+                 Map2 :: #{Key1 | Key => Value1 | Value}.
 
 put(_,_,_) -> erlang:nif_error(undef).
 
 
--spec remove(Key,Map1) -> Map2 when
-    Key :: term(),
-    Map1 :: map(),
-    Map2 :: map().
+-spec remove(Key :: term(), Map1 :: #{Key => Value}) ->
+                    Map2 :: #{Key => Value}.
 
 remove(_,_) -> erlang:nif_error(undef).
 
--spec take(Key,Map1) -> {Value,Map2} | error when
-    Key :: term(),
-    Map1 :: map(),
-    Value :: term(),
-    Map2 :: map().
+-spec take(Key :: term(), Map1 :: #{Key => Value}) ->
+                  {Value, Map2 :: #{Key => Value}} | 'error'.
 
 take(_,_) -> erlang:nif_error(undef).
 
 %% Shadowed by erl_bif_types: maps:to_list/1
--spec to_list(Map) -> [{Key,Value}] when
-    Map :: map(),
-    Key :: term(),
-    Value :: term().
+-spec to_list(Map :: #{Key => Value}) -> [{Key,Value}].
 
 to_list(_) -> erlang:nif_error(undef).
 
 
 %% Shadowed by erl_bif_types: maps:update/3
--spec update(Key,Value,Map1) -> Map2 when
-    Key :: term(),
-    Value :: term(),
-    Map1 :: map(),
-    Map2 :: map().
+-spec update(Key, Value, Map1 :: #{Key => Value1}) ->
+                    Map2 :: #{Key => Value1 | Value}.
 
 update(_,_,_) -> erlang:nif_error(undef).
 
 
--spec values(Map) -> Values when
-    Map :: map(),
-    Values :: [Value],
-    Value :: term().
+-spec values(Map :: #{_ => Value}) -> [Value].
 
 values(_) -> erlang:nif_error(undef).
 
 %% End of BIFs
 
--spec update_with(Key,Fun,Map1) -> Map2 when
-      Key :: term(),
-      Map1 :: map(),
-      Map2 :: map(),
-      Fun :: fun((Value1 :: term()) -> Value2 :: term()).
+-spec update_with(Key, Fun, Map1 :: #{Key => Value1}) -> #{Key => Value2} when
+      Fun :: fun((Value1) -> Value2).
 
 update_with(Key,Fun,Map) when is_function(Fun,1), is_map(Map) ->
     try maps:get(Key,Map) of
@@ -159,12 +121,9 @@ update_with(Key,Fun,Map) ->
     erlang:error(error_type(Map),[Key,Fun,Map]).
 
 
--spec update_with(Key,Fun,Init,Map1) -> Map2 when
-      Key :: term(),
-      Map1 :: Map1,
-      Map2 :: Map2,
-      Fun :: fun((Value1 :: term()) -> Value2 :: term()),
-      Init :: term().
+-spec update_with(Key, Fun, Init, Map1 :: #{Key1 => Value1}) ->
+                         #{Key1 | Key => Value1 | Value2 | Init} when
+      Fun :: fun((Value1) -> Value2).
 
 update_with(Key,Fun,Init,Map) when is_function(Fun,1), is_map(Map) ->
     case maps:find(Key,Map) of
@@ -175,11 +134,7 @@ update_with(Key,Fun,Init,Map) ->
     erlang:error(error_type(Map),[Key,Fun,Init,Map]).
 
 
--spec get(Key, Map, Default) -> Value | Default when
-        Key :: term(),
-        Map :: map(),
-        Value :: term(),
-        Default :: term().
+-spec get(Key, Map :: #{Key => Value}, Default) -> Value | Default.
 
 get(Key,Map,Default) when is_map(Map) ->
     case maps:find(Key, Map) of
@@ -192,12 +147,8 @@ get(Key,Map,Default) ->
     erlang:error({badmap,Map},[Key,Map,Default]).
 
 
--spec filter(Pred,Map1) -> Map2 when
-      Pred :: fun((Key, Value) -> boolean()),
-      Key  :: term(),
-      Value :: term(),
-      Map1 :: map(),
-      Map2 :: map().
+-spec filter(Pred, Map1 :: #{Key => Value}) -> Map2 :: #{Key => Value} when
+      Pred :: fun((Key, Value) -> boolean()).
 
 filter(Pred,Map) when is_function(Pred,2), is_map(Map) ->
     maps:from_list([{K,V}||{K,V}<-maps:to_list(Map),Pred(K,V)]);
@@ -205,28 +156,16 @@ filter(Pred,Map) ->
     erlang:error(error_type(Map),[Pred,Map]).
 
 
--spec fold(Fun,Init,Map) -> Acc when
-    Fun :: fun((K, V, AccIn) -> AccOut),
-    Init :: term(),
-    Acc :: term(),
-    AccIn :: term(),
-    AccOut :: term(),
-    Map :: map(),
-    K :: term(),
-    V :: term().
+-spec fold(Fun, Init :: Acc, Map :: #{K => V}) -> AccOut when
+    Fun :: fun((K, V, AccIn :: Acc) -> AccOut).
 
 fold(Fun,Init,Map) when is_function(Fun,3), is_map(Map) ->
     lists:foldl(fun({K,V},A) -> Fun(K,V,A) end,Init,maps:to_list(Map));
 fold(Fun,Init,Map) ->
     erlang:error(error_type(Map),[Fun,Init,Map]).
 
--spec map(Fun,Map1) -> Map2 when
-    Fun :: fun((K, V1) -> V2),
-    Map1 :: map(),
-    Map2 :: map(),
-    K :: term(),
-    V1 :: term(),
-    V2 :: term().
+-spec map(Fun, Map1 :: #{K => V1}) -> Map2 :: #{K => V2} when
+    Fun :: fun((K, V1) -> V2).
 
 map(Fun,Map) when is_function(Fun, 2), is_map(Map) ->
     maps:from_list([{K,Fun(K,V)}||{K,V}<-maps:to_list(Map)]);
@@ -234,8 +173,7 @@ map(Fun,Map) ->
     erlang:error(error_type(Map),[Fun,Map]).
 
 
--spec size(Map) -> non_neg_integer() when
-    Map :: map().
+-spec size(Map :: map()) -> non_neg_integer().
 
 size(Map) when is_map(Map) ->
     erlang:map_size(Map);
@@ -243,11 +181,8 @@ size(Val) ->
     erlang:error({badmap,Val},[Val]).
 
 
--spec without(Ks,Map1) -> Map2 when
-    Ks :: [K],
-    Map1 :: map(),
-    Map2 :: map(),
-    K :: term().
+-spec without(Ks :: [term()], Map1 :: #{Key => Value}) ->
+                     Map2 :: #{Key => Value}.
 
 without(Ks,M) when is_list(Ks), is_map(M) ->
     lists:foldl(fun(K, M1) -> ?MODULE:remove(K, M1) end, M, Ks);
@@ -255,11 +190,7 @@ without(Ks,M) ->
     erlang:error(error_type(M),[Ks,M]).
 
 
--spec with(Ks, Map1) -> Map2 when
-    Ks :: [K],
-    Map1 :: map(),
-    Map2 :: map(),
-    K :: term().
+-spec with(Ks :: [K], Map1 :: #{_ => Value}) -> Map2 :: #{K => Value}.
 
 with(Ks,Map1) when is_list(Ks), is_map(Map1) ->
     Fun = fun(K, List) ->

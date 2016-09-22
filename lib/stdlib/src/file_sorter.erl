@@ -220,7 +220,7 @@ keymerge(KeyPos, Files0, Output0, Options) ->
 -spec(check(FileName) -> Reply when
       FileName :: file_name(),
       Reply :: {ok, [Result]} | {error, reason()},
-      Result :: {FileName, TermPosition, term()},
+      Result :: {FileName :: file_name(), TermPosition, term()},
       TermPosition :: pos_integer()).
 check(FileName) ->
     check([FileName], []).
@@ -244,7 +244,7 @@ check(Files0, Options) ->
       KeyPos :: key_pos(),
       FileName :: file_name(),
       Reply :: {ok, [Result]} | {error, reason()},
-      Result :: {FileName, TermPosition, term()},
+      Result :: {FileName :: file_name(), TermPosition, term()},
       TermPosition :: pos_integer()).
 keycheck(KeyPos, FileName) ->
     keycheck(KeyPos, [FileName], []).

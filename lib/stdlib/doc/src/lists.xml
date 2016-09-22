@@ -117,7 +117,7 @@
       <fsummary>Concatenate a list of atoms.</fsummary>
       <desc>
         <p>Concatenates the text representation of the elements of
-          <c><anno>Things</anno></c>. The elements of <c><anno>Things</anno></c>
+          <c><anno>Things</anno></c>. The elements of <c><anno>Thing</anno></c>
           can be atoms, integers, floats, or strings.</p>
         <p><em>Example:</em></p>
         <pre>
@@ -355,10 +355,10 @@ flatmap(Fun, List1) ->
       <desc>
         <p>Returns a list of tuples where, for each tuple in
           <c><anno>TupleList1</anno></c>, the <c><anno>N</anno></c>th element
-          <c><anno>Term1</anno></c> of the tuple
+          <c><anno>Tuple1</anno></c> of the tuple
           has been replaced with the result of calling
-          <c><anno>Fun</anno>(<anno>Term1</anno>)</c>.</p>
-        <p><em>Examples:</em></p>
+          <c><anno>Fun</anno>(<anno>Tuple1</anno>)</c>.</p>
+        <p><em>Example:</em></p>
         <pre>
 > <input>Fun = fun(Atom) -> atom_to_list(Atom) end.</input>
 #Fun&lt;erl_eval.6.10732646&gt;
@@ -844,7 +844,7 @@ splitwith(Pred, List) ->
             <c>A</c> and <c>B</c> are long lists. (If both lists are long, it
             is a much better choice to use ordered lists and
             <seealso marker="ordsets#subtract/2">
-            <c>ordsets:subtract/2</c></seealso>.</p>
+            <c>ordsets:subtract/2</c></seealso>).</p>
         </warning>
       </desc>
     </func>

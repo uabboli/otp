@@ -103,7 +103,7 @@ from_list(L) ->
 %% Return true or false depending on if element is in queue
 %% 
 %% O(length(Q)) worst case
--spec member(Item, Q :: queue(Item)) -> boolean().
+-spec member(Item :: _, Q :: queue(_)) -> boolean().
 member(X, {R,F}) when is_list(R), is_list(F) ->
     lists:member(X, R) orelse lists:member(X, F);
 member(X, Q) ->
@@ -116,7 +116,7 @@ member(X, Q) ->
 %% Put at least one element in each list, if it is cheap
 %%
 %% O(1)
--spec in(Item, Q1 :: queue(Item)) -> Q2 :: queue(Item).
+-spec in(Item, Q1 :: queue(T)) -> Q2 :: queue(Item | T).
 in(X, {[_]=In,[]}) ->
     {[X], In};
 in(X, {In,Out}) when is_list(In), is_list(Out) ->
@@ -128,7 +128,7 @@ in(X, Q) ->
 %% Put at least one element in each list, if it is cheap
 %%
 %% O(1)
--spec in_r(Item, Q1 :: queue(Item)) -> Q2 :: queue(Item).
+-spec in_r(Item, Q1 :: queue(T)) -> Q2 :: queue(Item | T).
 in_r(X, {[],[_]=F}) ->
     {F,[X]};
 in_r(X, {R,F}) when is_list(R), is_list(F) ->
@@ -246,7 +246,7 @@ peek_r(Q) ->
 %% Remove the first element and return resulting queue
 %%
 %% O(1) amortized
--spec drop(Q1 :: queue(Item)) -> Q2 :: queue(Item).
+-spec drop(Q1 :: queue(_)) -> Q2 :: queue(_).
 drop({[],[]}=Q) ->
     erlang:error(empty, [Q]);
 drop({[_],[]}) ->
@@ -264,7 +264,7 @@ drop(Q) ->
 %% Remove the last element and return resulting queue
 %%
 %% O(1) amortized
--spec drop_r(Q1 :: queue(Item)) -> Q2 :: queue(Item).
+-spec drop_r(Q1 :: queue(_)) -> Q2 :: queue(_).
 drop_r({[],[]}=Q) ->
     erlang:error(empty, [Q]);
 drop_r({[],[_]}) ->
@@ -295,7 +295,7 @@ reverse(Q) ->
 %%
 %% Q2 empty: O(1)
 %% else:     O(len(Q1))
--spec join(Q1 :: queue(Item), Q2 :: queue(Item)) -> Q3 :: queue(Item).
+-spec join(Q1 :: queue(I1), Q2 :: queue(I2)) -> Q3 :: queue(I1 | I2).
 join({R,F}=Q, {[],[]}) when is_list(R), is_list(F) ->
     Q;
 join({[],[]}, {R,F}=Q) when is_list(R), is_list(F) ->
@@ -351,8 +351,8 @@ split_r1_to_f2(N, [X|R1], F1, R2, F2) ->
 %% 
 %% Fun(_) -> List: O(length(List) * len(Q))
 %% else:           O(len(Q)
--spec filter(Fun, Q1 :: queue(Item)) -> Q2 :: queue(Item) when
-      Fun :: fun((Item) -> boolean() | list(Item)).
+-spec filter(Fun, Q1 :: queue(Item1)) -> Q2 :: queue(Item2) when
+      Fun :: fun((Item1) -> boolean() | list(Item2)).
 filter(Fun, {R0,F0}) when is_function(Fun, 1), is_list(R0), is_list(F0) ->
     F = filter_f(Fun, F0),
     R = filter_r(Fun, R0),
@@ -428,7 +428,7 @@ filter_r(Fun, [X|R0]) ->
 
 %% Cons to head
 %%
--spec cons(Item, Q1 :: queue(Item)) -> Q2 :: queue(Item).
+-spec cons(Item1, Q1 :: queue(Item2)) -> Q2 :: queue(Item1 | Item2).
 cons(X, Q) ->
     in_r(X, Q).
 
@@ -455,7 +455,7 @@ tail(Q) ->
 
 %% Cons to tail
 %%
--spec snoc(Q1 :: queue(Item), Item) -> Q2 :: queue(Item).
+-spec snoc(Q1 :: queue(Item1), Item2) -> Q2 :: queue(Item1 | Item2).
 snoc(Q, X) ->
     in(X, Q).
 
@@ -466,11 +466,11 @@ daeh(Q) -> get_r(Q).
 last(Q) -> get_r(Q).
 
 %% Remove last element and return resulting queue
--spec liat(Q1 :: queue(Item)) -> Q2 :: queue(Item).
+-spec liat(Q1 :: queue(_)) -> Q2 :: queue(_).
 liat(Q) -> drop_r(Q).
--spec lait(Q1 :: queue(Item)) -> Q2 :: queue(Item).
+-spec lait(Q1 :: queue(_)) -> Q2 :: queue(_).
 lait(Q) -> drop_r(Q). %% Oops, mis-spelled 'tail' reversed. Forget this one.
--spec init(Q1 :: queue(Item)) -> Q2 :: queue(Item).
+-spec init(Q1 :: queue(_)) -> Q2 :: queue(_).
 init(Q) -> drop_r(Q).
 
 %%--------------------------------------------------------------------------

@@ -216,10 +216,11 @@ match(_, _) ->
 match(_, _, _) ->
     erlang:nif_error(undef).
 
--spec match(Continuation) -> {[Match], Continuation} |
-                                '$end_of_table'  when
+-spec match(Continuation1) -> {[Match], Continuation2} |
+                              '$end_of_table'  when
       Match :: [term()],
-      Continuation :: continuation().
+      Continuation1 :: continuation(),
+      Continuation2 :: continuation().
 
 match(_) ->
     erlang:nif_error(undef).
@@ -243,10 +244,11 @@ match_object(_, _) ->
 match_object(_, _, _) ->
     erlang:nif_error(undef).
 
--spec match_object(Continuation) -> {[Object], Continuation} |
-                                    '$end_of_table' when
+-spec match_object(Continuation1) -> {[Object], Continuation2} |
+                                     '$end_of_table' when
       Object :: tuple(),
-      Continuation :: continuation().
+      Continuation1 :: continuation(),
+      Continuation2 :: continuation().
 
 match_object(_) ->
     erlang:nif_error(undef).
@@ -338,9 +340,10 @@ select(_, _) ->
 select(_, _, _) ->
     erlang:nif_error(undef).
 
--spec select(Continuation) -> {[Match],Continuation} | '$end_of_table' when
+-spec select(Continuation1) -> {[Match],Continuation2} | '$end_of_table' when
       Match :: term(),
-      Continuation :: continuation().
+      Continuation1 :: continuation(),
+      Continuation2 :: continuation().
 
 select(_) ->
     erlang:nif_error(undef).
@@ -380,9 +383,10 @@ select_reverse(_, _) ->
 select_reverse(_, _, _) ->
     erlang:nif_error(undef).
 
--spec select_reverse(Continuation) -> {[Match],Continuation} |
-                                      '$end_of_table' when
-      Continuation :: continuation(),
+-spec select_reverse(Continuation1) -> {[Match],Continuation2} |
+                                       '$end_of_table' when
+      Continuation1 :: continuation(),
+      Continuation2 :: continuation(),
       Match :: term().
 
 select_reverse(_) ->
@@ -497,8 +501,9 @@ update_element(_, _, _) ->
 match_spec_run(List, CompiledMS) ->
     lists:reverse(ets:match_spec_run_r(List, CompiledMS, [])).
 
--spec repair_continuation(Continuation, MatchSpec) -> Continuation when
-      Continuation :: continuation(),
+-spec repair_continuation(Continuation1, MatchSpec) -> Continuation2 when
+      Continuation1 :: continuation(),
+      Continuation2 :: continuation(),
       MatchSpec :: match_spec().
 
 %% $end_of_table is an allowed continuation in ets...
@@ -559,13 +564,8 @@ fun2ms(ShellFun) when is_function(ShellFun) ->
                            shell]}})
     end.
 
--spec foldl(Function, Acc0, Tab) -> Acc1 when
-      Function :: fun((Element :: term(), AccIn) -> AccOut),
-      Tab :: tab(),
-      Acc0 :: term(),
-      Acc1 :: term(),
-      AccIn :: term(),
-      AccOut :: term().
+-spec foldl(Function, Acc0 :: Acc, Tab :: tab()) -> AccOut when
+      Function :: fun((Element :: term(), Acc) -> AccOut).
 
 foldl(F, Accu, T) ->
     ets:safe_fixtable(T, true),
@@ -586,13 +586,8 @@ do_foldl(F, Accu0, Key, T) ->
 		     ets:next(T, Key), T)
     end.
 
--spec foldr(Function, Acc0, Tab) -> Acc1 when
-      Function :: fun((Element :: term(), AccIn) -> AccOut),
-      Tab :: tab(),
-      Acc0 :: term(),
-      Acc1 :: term(),
-      AccIn :: term(),
-      AccOut :: term().
+-spec foldr(Function, Acc0 :: Acc, Tab :: tab()) -> AccOut when
+      Function :: fun((Element :: term(), Acc) -> AccOut).
 
 foldr(F, Accu, T) ->
     ets:safe_fixtable(T, true),
@@ -663,11 +658,14 @@ test_ms(Term, MS) ->
 	    Error
     end.
 
+-type init_fun() :: fun(('read' | 'close') ->
+                               'end_of_input'
+                             | {Objects :: [term()], init_fun()}
+                             | term()).
+
 -spec init_table(Tab, InitFun) -> 'true' when
       Tab :: tab(),
-      InitFun :: fun((Arg) -> Res),
-      Arg :: 'read' | 'close',
-      Res :: 'end_of_input' | {Objects :: [term()], InitFun} | term().
+      InitFun :: init_fun().
 
 init_table(Table, Fun) ->
     ets:delete_all_objects(Table),

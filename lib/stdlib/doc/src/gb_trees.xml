@@ -4,7 +4,7 @@
 <erlref>
   <header>
     <copyright>
-      <year>2001</year><year>2015</year>
+      <year>2001</year><year>2016</year>
       <holder>Ericsson AB. All Rights Reserved.</holder>
     </copyright>
     <legalnotice>
@@ -244,11 +244,12 @@
       <name name="map" arity="2"/>
       <fsummary>Return largest key and value.</fsummary>
       <desc>
-        <p>Maps function F(<anno>K</anno>, <anno>V1</anno>) -> <anno>V2</anno>
+        <p>Maps function F(<anno>Key</anno>, <anno>Value1</anno>) ->
+	  <anno>Value2</anno>
           to all key-value pairs of tree <c><anno>Tree1</anno></c>. Returns a
           new tree <c><anno>Tree2</anno></c> with the same set of keys as
 	  <c><anno>Tree1</anno></c> and the new set of values
-          <c><anno>V2</anno></c>.</p>
+          <c><anno>Value2</anno></c>.</p>
          </desc>
     </func>
 

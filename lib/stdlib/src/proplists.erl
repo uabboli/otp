@@ -360,9 +360,10 @@ get_keys([], Keys) ->
 %% @doc Deletes all entries associated with <code>Key</code> from
 %% <code>List</code>.
 
--spec delete(Key, List) -> List when
+-spec delete(Key, List1) -> List2 when
       Key :: term(),
-      List :: [term()].
+      List1 :: [term()],
+      List2 :: [term()].
 
 delete(Key, [P | Ps]) ->
     if is_atom(P), P =:= Key ->
@@ -394,8 +395,7 @@ delete(_, []) ->
 %% @see normalize/2
 
 -spec substitute_aliases(Aliases, ListIn) -> ListOut when
-      Aliases :: [{Key, Key}],
-      Key :: term(),
+      Aliases :: [{Key1 :: term(), Key2 :: term()}],
       ListIn :: [term()],
       ListOut :: [term()].
 
@@ -438,9 +438,7 @@ substitute_aliases_1([], P) ->
 %% @see normalize/2
 
 -spec substitute_negations(Negations, ListIn) -> ListOut when
-      Negations :: [{Key1, Key2}],
-      Key1 :: term(),
-      Key2 :: term(),
+      Negations :: [{Key1 :: term(), Key2 :: term()}],
       ListIn :: [term()],
       ListOut :: [term()].
 
@@ -614,8 +612,8 @@ flatten([]) ->
       Operation :: {'aliases', Aliases}
                  | {'negations', Negations}
                  | {'expand', Expansions},
-      Aliases :: [{Key, Key}],
-      Negations :: [{Key, Key}],
+      Aliases :: [{Key1 :: term(), Key2 :: term()}],
+      Negations :: [{Key1 :: term(), Key2 :: term()}],
       Expansions :: [{Property :: property(), Expansion :: [term()]}],
       ListOut :: [term()].
 

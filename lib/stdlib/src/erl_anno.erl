@@ -1,7 +1,7 @@
 %%
 %% %CopyrightBegin%
 %%
-%% Copyright Ericsson AB 1996-2015. All Rights Reserved.
+%% Copyright Ericsson AB 1996-2016. All Rights Reserved.
 %%
 %% Licensed under the Apache License, Version 2.0 (the "License");
 %% you may not use this file except in compliance with the License.
@@ -72,8 +72,7 @@
 -define(ACOLUMN(C), ?COL(C)).
 -endif.
 
--spec to_term(Anno) -> anno_term() when
-      Anno :: anno().
+-spec to_term(Anno :: anno()) -> anno_term().
 
 -ifdef(DEBUG).
 to_term(Anno) ->
@@ -83,9 +82,7 @@ to_term(Anno) ->
     Anno.
 -endif.
 
--spec from_term(Term) -> Anno when
-      Term :: anno_term(),
-      Anno :: anno().
+-spec from_term(Term :: anno_term()) -> anno().
 
 -ifdef(DEBUG).
 from_term(Term) when is_list(Term) ->
@@ -101,8 +98,7 @@ from_term(Term) ->
     Term.
 -endif.
 
--spec new(Location) -> anno() when
-      Location :: location().
+-spec new(Location :: location()) -> anno().
 
 new(Line) when ?LLINE(Line) ->
     new_location(Line);
@@ -119,8 +115,7 @@ new_location(Location) ->
     Location.
 -endif.
 
--spec is_anno(Term) -> boolean() when
-      Term :: any().
+-spec is_anno(Term :: any()) -> boolean().
 
 is_anno(Line) when ?ALINE(Line) ->
     true;
@@ -157,8 +152,7 @@ is_filename(T) ->
 is_string(T) ->
     is_list(T).
 
--spec column(Anno) -> column() | 'undefined' when
-      Anno :: anno().
+-spec column(Anno :: anno()) -> column() | 'undefined'.
 
 column({Line, Column}) when ?ALINE(Line), ?ACOLUMN(Column) ->
     Column;
@@ -172,8 +166,7 @@ column(Anno) ->
             undefined
     end.
 
--spec end_location(Anno) -> location() | 'undefined' when
-      Anno :: anno().
+-spec end_location(Anno :: anno()) -> location() | 'undefined'.
 
 end_location(Anno) ->
     case text(Anno) of
@@ -188,8 +181,7 @@ end_location(Anno) ->
             end
     end.
 
--spec file(Anno) -> filename() | 'undefined' when
-      Anno :: anno().
+-spec file(Anno :: anno()) -> filename() | 'undefined'.
 
 file(Line) when ?ALINE(Line) ->
     undefined;
@@ -198,8 +190,7 @@ file({Line, Column}) when ?ALINE(Line), ?ACOLUMN(Column) ->
 file(Anno) ->
     anno_info(Anno, file).
 
--spec generated(Anno) -> generated() when
-      Anno :: anno().
+-spec generated(Anno :: anno()) -> generated().
 
 generated(Line) when ?ALINE(Line) ->
     false;
@@ -208,8 +199,7 @@ generated({Line, Column}) when ?ALINE(Line), ?ACOLUMN(Column) ->
 generated(Anno) ->
     anno_info(Anno, generated, false).
 
--spec line(Anno) -> line() when
-      Anno :: anno().
+-spec line(Anno :: anno()) -> line().
 
 line(Anno) ->
     case location(Anno) of
@@ -219,8 +209,7 @@ line(Anno) ->
             Line
     end.
 
--spec location(Anno) -> location() when
-      Anno :: anno().
+-spec location(Anno :: anno()) -> location().
 
 location(Line) when ?ALINE(Line) ->
     Line;
@@ -229,8 +218,7 @@ location({Line, Column}=Location) when ?ALINE(Line), ?ACOLUMN(Column) ->
 location(Anno) ->
     anno_info(Anno, location).
 
--spec record(Anno) -> record() when
-      Anno :: anno().
+-spec record(Anno :: anno()) -> record().
 
 record(Line) when ?ALINE(Line) ->
     false;
@@ -239,8 +227,7 @@ record({Line, Column}) when ?ALINE(Line), ?ACOLUMN(Column) ->
 record(Anno) ->
     anno_info(Anno, record, false).
 
--spec text(Anno) -> text() | 'undefined' when
-      Anno :: anno().
+-spec text(Anno :: anno()) -> text() | 'undefined'.
 
 text(Line) when ?ALINE(Line) ->
     undefined;
@@ -249,23 +236,17 @@ text({Line, Column}) when ?ALINE(Line), ?ACOLUMN(Column) ->
 text(Anno) ->
     anno_info(Anno, text).
 
--spec set_file(File, Anno) -> Anno when
-      File :: filename(),
-      Anno :: anno().
+-spec set_file(File :: filename(), Anno :: anno()) -> anno().
 
 set_file(File, Anno) ->
     set(file, File, Anno).
 
--spec set_generated(Generated, Anno) -> Anno when
-      Generated :: generated(),
-      Anno :: anno().
+-spec set_generated(Generated :: generated(), Anno :: anno()) -> anno().
 
 set_generated(Generated, Anno) ->
     set(generated, Generated, Anno).
 
--spec set_line(Line, Anno) -> Anno when
-      Line :: line(),
-      Anno :: anno().
+-spec set_line(Line :: line(), Anno :: anno()) -> anno().
 
 set_line(Line, Anno) ->
     case location(Anno) of
@@ -275,9 +256,7 @@ set_line(Line, Anno) ->
             set_location(Line, Anno)
     end.
 
--spec set_location(Location, Anno) -> Anno when
-      Location :: location(),
-      Anno :: anno().
+-spec set_location(Location :: location(), Anno :: anno()) -> anno().
 
 set_location(Line, L) when ?ALINE(L), ?LLINE(Line) ->
     new_location(Line);
@@ -292,16 +271,12 @@ set_location({L, C}=Loc, {Line, Column}) when ?ALINE(Line), ?ACOLUMN(Column),
 set_location(Location, Anno) ->
     set(location, Location, Anno).
 
--spec set_record(Record, Anno) -> Anno when
-      Record :: record(),
-      Anno :: anno().
+-spec set_record(Record :: record(), Anno :: anno()) -> anno().
 
 set_record(Record, Anno) ->
     set(record, Record, Anno).
 
--spec set_text(Text, Anno) -> Anno when
-      Text :: text(),
-      Anno :: anno().
+-spec set_text(Text :: text(), Anno :: anno()) -> anno().
 
 set_text(Text, Anno) ->
     set(text, Text, Anno).

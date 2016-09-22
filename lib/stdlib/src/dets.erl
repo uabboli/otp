@@ -298,25 +298,17 @@ fsck(Fname, Version) ->
 first(Tab) ->
     badarg_exit(treq(Tab, first), [Tab]).
 
--spec foldr(Function, Acc0, Name) -> Acc | {'error', Reason} when
+-spec foldr(Function, Acc0 :: Acc, Name) -> AccOut | {'error', Reason} when
       Name :: tab_name(),
-      Function :: fun((Object :: object(), AccIn) -> AccOut),
-      Acc0 :: term(),
-      Acc :: term(),
-      AccIn :: term(),
-      AccOut :: term(),
+      Function :: fun((Object :: object(), AccIn :: Acc) -> AccOut),
       Reason :: term().
 
 foldr(Fun, Acc, Tab) ->
     foldl(Fun, Acc, Tab).
 
--spec foldl(Function, Acc0, Name) -> Acc | {'error', Reason} when
+-spec foldl(Function, Acc0 :: Acc, Name) -> AccOut | {'error', Reason} when
       Name :: tab_name(),
-      Function :: fun((Object :: object(), AccIn) -> AccOut),
-      Acc0 :: term(),
-      Acc :: term(),
-      AccIn :: term(),
-      AccOut :: term(),
+      Function :: fun((Object :: object(), AccIn :: Acc) -> AccOut),
       Reason :: term().
 
 foldl(Fun, Acc, Tab) ->
@@ -397,26 +389,26 @@ info(Tab, Tag) ->
 	    undefined(req(Pid, {info, Tag}))
     end.
 
+-type init_fun() :: fun(('read' | 'close') ->
+                               'end_of_input'
+                             | {[object()], init_fun()}
+                             | (Data :: binary() | tuple())
+                             | term()).
+
 -spec init_table(Name, InitFun) -> ok | {'error', Reason} when
       Name :: tab_name(),
-      InitFun :: fun((Arg) -> Res),
-      Arg :: read | close,
-      Res :: end_of_input | {[object()], InitFun} | {Data, InitFun} | term(),
-      Reason :: term(),
-      Data :: binary() | tuple().
+      InitFun :: init_fun(),
+      Reason :: term().
 
 init_table(Tab, InitFun) ->
     init_table(Tab, InitFun, []).
 
 -spec init_table(Name, InitFun, Options) -> ok | {'error', Reason} when
       Name :: tab_name(),
-      InitFun :: fun((Arg) -> Res),
-      Arg :: read | close,
-      Res :: end_of_input | {[object()], InitFun} | {Data, InitFun} | term(),
+      InitFun :: init_fun(),
       Options :: Option | [Option],
-      Option :: {min_no_slots,no_slots()} | {format,term | bchunk},
-      Reason :: term(),
-      Data :: binary() | tuple().
+      Option :: {'min_no_slots', no_slots()} | {format, 'term' | 'bchunk'},
+      Reason :: term().
 
 init_table(Tab, InitFun, Options) when is_function(InitFun) ->
     case options(Options, [format, min_no_slots]) of
