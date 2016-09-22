@@ -507,7 +507,7 @@ pp_constraints(T, Cs) ->
 
 pp_map(T, Map) ->
   L = [{erl_types:t_var(V), Type} ||
-        {V, Type} <- lists:sort(maps:to_list(D))],
+        {V, Type} <- lists:sort(maps:to_list(Map))],
   pp_list(T, L).
 
 pp_list(T, []) ->
