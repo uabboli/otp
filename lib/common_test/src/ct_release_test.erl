@@ -370,15 +370,17 @@ get_app_vsns(#ct_data{from=FromApps,to=ToApps},App) ->
     end.
 
 %%-----------------------------------------------------------------
+
+-type instr() :: term().
+
 -spec get_appup(CtData,App) -> {ok,Appup} | {error,Reason} when
       CtData :: ct_data(),
       App :: atom(),
       Appup :: {From,To,Up,Down},
       From :: string(),
       To :: string(),
-      Up :: [Instr],
-      Down :: [Instr],
-      Instr :: term(),
+      Up :: [instr()],
+      Down :: [instr()],
       Reason :: {app_not_found,App} | {vsn_not_found,{App,From}}.
 %% @doc Get appup instructions for the given application.
 %%
