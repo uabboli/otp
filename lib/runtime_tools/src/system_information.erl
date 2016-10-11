@@ -137,9 +137,10 @@ modules(Opt) when is_atom(Opt) ->
 -spec sanity_check() -> ok | {failed, Failures} when
       Application :: atom(),
       ApplicationVersion :: string(),
+      ApplicationVersion1 :: string(),
       MissingRuntimeDependencies :: {missing_runtime_dependencies,
 				     ApplicationVersion,
-				     [ApplicationVersion]},
+				     [ApplicationVersion1]},
       InvalidApplicationVersion :: {invalid_application_version,
 				    ApplicationVersion},
       InvalidAppFile :: {invalid_app_file, Application},
