@@ -143,11 +143,12 @@ open(X) ->
               Opt :: {ip,IP}
                    | {ifaddr,IP}
                    | inet:address_family()
-                   | {port,Port}
+                   | {port,Port1}
 		   | {type,SockType}
                    | option(),
       IP :: inet:ip_address() | any | loopback,
       Port :: inet:port_number(),
+      Port1 :: inet:port_number(),
       SockType :: seqpacket | stream,
       Socket :: sctp_socket().
 

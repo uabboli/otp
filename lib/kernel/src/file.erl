@@ -730,9 +730,10 @@ truncate(_) ->
     {error, badarg}.
 
 -spec copy(Source, Destination) -> {ok, BytesCopied} | {error, Reason} when
-      Source :: io_device() | Filename | {Filename, Modes},
-      Destination :: io_device() | Filename | {Filename, Modes},
-      Filename :: name_all(),
+      Source :: io_device() | SrcFilename | {SrcFilename, Modes},
+      Destination :: io_device() | DestFilename | {DestFilename, Modes},
+      SrcFilename :: name_all(),
+      DestFilename :: name_all(),
       Modes :: [mode()],
       BytesCopied :: non_neg_integer(),
       Reason :: posix() | badarg | terminated.
@@ -742,9 +743,10 @@ copy(Source, Dest) ->
 
 -spec copy(Source, Destination, ByteCount) ->
              {ok, BytesCopied} | {error, Reason} when
-      Source :: io_device() | Filename | {Filename, Modes},
-      Destination :: io_device() | Filename | {Filename, Modes},
-      Filename :: name_all(),
+      Source :: io_device() | SrcFilename | {SrcFilename, Modes},
+      Destination :: io_device() | DestFilename | {DestFilename, Modes},
+      SrcFilename :: name_all(),
+      DestFilename :: name_all(),
       Modes :: [mode()],
       ByteCount :: non_neg_integer() | infinity,
       BytesCopied :: non_neg_integer(),
