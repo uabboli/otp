@@ -542,6 +542,8 @@ crc32_combine(_FirstCrc, _SecondCrc, _SecondSize) ->
 date() ->
     erlang:nif_error(undefined).
 
+-type http_string() :: string() | binary().
+
 %% decode_packet/3
 -spec erlang:decode_packet(Type, Bin, Options) ->
                                   {ok, Packet, Rest} |
@@ -563,24 +565,24 @@ date() ->
                   | 'http_eoh'
                   | HttpError,
       HttpRequest :: {'http_request', HttpMethod, HttpUri, HttpVersion},
-      HttpResponse :: {'http_response', HttpVersion, integer(), HttpString},
+      HttpResponse :: {'http_response', HttpVersion, integer(), http_string()},
       HttpHeader :: {'http_header',
                      integer(),
                      HttpField,
                      Reserved :: term(),
-                     Value :: HttpString},
-      HttpError :: {'http_error', HttpString},
+                     Value :: http_string()},
+      HttpError :: {'http_error', http_string()},
       HttpMethod :: 'OPTIONS' | 'GET' | 'HEAD' | 'POST' | 'PUT' | 'DELETE'
-                  | 'TRACE' | HttpString,
+                  | 'TRACE' | http_string(),
       HttpUri :: '*'
                | { 'absoluteURI',
                    'http' | 'https',
-                   Host :: HttpString,
+                   Host :: http_string(),
                    Port :: inet:port_number() | 'undefined',
-                   Path :: HttpString}
-               | {'scheme', Scheme :: HttpString, HttpString}
-               | {'abs_path', HttpString}
-               | HttpString,
+                   Path :: http_string()}
+               | {'scheme', Scheme :: http_string(), http_string()}
+               | {'abs_path', http_string()}
+               | http_string(),
       HttpVersion :: {Major :: non_neg_integer(), Minor :: non_neg_integer()},
       HttpField :: 'Cache-Control'
                  | 'Connection'
@@ -634,8 +636,7 @@ date() ->
                  | 'Cookie'
                  | 'Keep-Alive'
                  | 'Proxy-Connection'
-                 | HttpString,
-      HttpString :: string() | binary().
+                 | http_string().
 decode_packet(_Type, _Bin, _Options) ->
     erlang:nif_error(undefined).
 
@@ -1710,9 +1711,11 @@ system_monitor() ->
 %% system_monitor/1
 -spec erlang:system_monitor(Arg) -> MonSettings when
       Arg :: undefined | { MonitorPid, Options },
-      MonSettings :: undefined | { MonitorPid, Options },
+      MonSettings :: undefined | { OldMonitorPid, OldOptions },
       MonitorPid :: pid(),
-      Options :: [ system_monitor_option() ].
+      OldMonitorPid :: pid(),
+      Options :: [ system_monitor_option() ],
+      OldOptions :: [ system_monitor_option() ].
 system_monitor(_Arg) ->
     erlang:nif_error(undefined).
 

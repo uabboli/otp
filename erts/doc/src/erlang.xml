@@ -948,6 +948,7 @@ Z = erlang:crc32_combine(X,Y,iolist_size(Data2)).</code>
 
     <func>
       <name name="decode_packet" arity="3"/>
+      <type name="http_string"/>
       <fsummary>Extract a protocol packet from a binary.</fsummary>
       <desc>
         <p>Decodes the binary <c><anno>Bin</anno></c> according to the packet
@@ -1021,7 +1022,7 @@ Z = erlang:crc32_combine(X,Y,iolist_size(Data2)).</code>
               <c>http_eoh</c> is returned, which marks the end of the
               headers and the beginning of any following message body.</p> 
             <p>The variants <c>http_bin</c> and <c>httph_bin</c> return
-              strings (<c>HttpString</c>) as binaries instead of lists.</p>
+              strings (<c>http_string()</c>) as binaries instead of lists.</p>
           </item>
         </taglist>
         <p>Options:</p>
