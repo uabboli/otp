@@ -3336,6 +3336,7 @@ t_subst_aux(?var(Id), Map) ->
 t_subst_aux(?list(Contents, Termination, Size), Map) ->
   case t_subst_aux(Contents, Map) of
     ?none -> ?none;
+    ?unit -> ?none;
     NewContents ->
       %% Be careful here to make the termination collapse if necessary.
       case t_subst_aux(Termination, Map) of

@@ -1,0 +1,4 @@
+
+proper_symb.erl:4: Function symb_walk/3 has no local return
+proper_symb.erl:7: Function symb_walk_gen/3 has no local return
+proper_symb.erl:8: The created fun has no local return
